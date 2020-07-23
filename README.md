@@ -5,8 +5,8 @@ The [`tf.Bijector`](https://www.tensorflow.org/probability/api_docs/python/tfp/b
 
 ## Normalizing Flows for Conditional Density Estimation
 
-Real-world regression problems are often not deterministic, meaning that for every possible input vector $\mathbf{x} = [x_1,\ldots,x_n]^T$ a whole range of outputs $y$ are probable.
-In such cases it is not sufficient to just predict a single point, but rather the conditioned probability density function $p(y|\mathbf{x})$ for $y$ given the input $\mathbf{x}$.
+Real-world regression problems are often not deterministic, meaning that for every possible input vector *x* a whole range of outputs *y* are probable.
+In such cases it is not sufficient to just predict a single point, but rather the conditioned probability density function *p(y|x)* for *y* given the input *x*.
 This class of machine learning problems is commonly referred to as conditional density estimation (CDE).
 
 Normalizing flows (NF) [1] are transformation models that can be used for density estimation.
@@ -15,23 +15,23 @@ This composition of simple transformation functions allows NF based models to be
 Conditioned normalizing flows can be used for complex CDE, without assuming much about their shape [3, 4].
 Their expressiveness, however, is highly dependent on the flexibility of the used transformation functions.
 
-The following illustration shows a conditioned normalizing flow model, transforming a complex conditioned distribution $p_y(y|x)$ step by step to a simple Gaussian distribution $p_z(z|x)$, conditioned on some value $x$. The visualization was inspired by [17].
+The following illustration shows a conditioned normalizing flow model, transforming a complex conditioned distribution step by step to a simple Gaussian distribution, conditioned on some value *x*. The visualization was inspired by [17].
 
 ![](gfx/conditioned_normalizing_flow.svg)
 
-## Deep transformation model 
+## Deep Transformation Model 
 
 A recent study [4] presented a new type of flow-based transformation models especially optimized for CDE.
-They joined ideas from statistical transformation models [3] and deep normalizing flows [1] and were able to outperform existing models from both fields for complex distributions far away from Gaussian.
+They joined ideas from statistical transformation models [3] and deep normalizing flows [1] and were able to outperform existing models for complex distributions far away from Gaussian.
 
 Compared to the statistical transformation models the proposed deep transformation model does not require predefined features and can be trained in an end-to-end fashion from complex data.
 The very expressive Bernstein polynomials are used as basis transformations [3] combined in a composition of four different transformation functions to build a NF.
 
-A neural network was trained to learn the mapping from the input $\mathbf{x}$ to the parameters which are then used to parametrize the transformer functions $f_n(y,\theta_{n,x})$ in the flow.
+A neural network was trained to learn the mapping from the input *x* to the parameters which are then used to parametrize the transformer functions in the flow.
 
 ![](gfx/conditioned_normalizing_flow_network.svg)
 
-This way each input $\mathbf{x}$ yields a different parametrization of the flow and thus results in a different transformation, hence a different conditioned distribution $p_y(y|x)$ .
+This way each input *x* yields a different parametrization of the flow and thus results in a different transformation, hence a different conditioned distribution *p_y(y|x)*.
 
 ## License
 
