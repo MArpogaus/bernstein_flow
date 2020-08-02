@@ -21,11 +21,8 @@ The following illustration shows a conditioned normalizing flow model, transform
 
 ## Deep Transformation Model 
 
-A recent study [4] presented a new type of flow-based transformation models especially optimized for CDE.
-They joined ideas from statistical transformation models [3] and deep normalizing flows [1] and were able to outperform existing models for complex distributions far away from Gaussian.
-
-Compared to the statistical transformation models the proposed deep transformation model does not require predefined features and can be trained in an end-to-end fashion from complex data.
-The very expressive Bernstein polynomials are used as basis transformations [3] combined in a composition of four different transformation functions to build a NF.
+A recent work [4] presented a new type of flow-based transformation models especially optimized for CDE. In that work 
+ideas from statistical transformation models [3] and deep normalizing flows [1] are joined. These *deep normalizing flows* outperform existing models for complex distributions far away from Gaussian. Compared to the statistical transformation models the proposed deep transformation model does not require predefined features and can be trained in an end-to-end fashion from complex data. The very expressive Bernstein polynomials are used as basis transformations [3] combined in a composition of four different transformation functions to build a NF.
 
 A neural network was trained to learn the mapping from the input *x* to the parameters which are then used to parametrize the transformer functions in the flow.
 
