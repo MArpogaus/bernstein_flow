@@ -11,7 +11,7 @@ Pull and install it directly from git using pip:
 pip install git+https://github.com/MArpogaus/TensorFlow-Probability-Bernstein-Polynomial-Bijector.git
 ```
 
-Or clone this repository an install it from there
+Or clone this repository an install it from there:
 
 ```bash
 git clone https://github.com/MArpogaus/TensorFlow-Probability-Bernstein-Polynomial-Bijector.git ./bernstein_flow
@@ -21,7 +21,7 @@ pip install -e .
 
 ## Examples
 
-You can find a two examples in the `ipynb' directory.
+You can find a two examples in the `ipynb` directory.
 
 **Note:** You might want to install the [`jupyter_latex_envs`](https://github.com/jfbercher/jupyter_latex_envs/) extension for Jupyter notebook to display the citations correctly.
 
