@@ -3,6 +3,10 @@
 This Repository contains a implementation of a normalizing flow for conditional density estimation using Bernstein polynomials, as proposed in [4].
 The [`tf.Bijector`](https://www.tensorflow.org/probability/api_docs/python/tfp/bijectors/Bijector) interface is used for the implementation to benefit from the powerful TensorFlow Probability framework.
 
+## Installation and Usage
+
+You can find a minimal examples in the `ipynb' directory.
+
 ## Normalizing Flows for Conditional Density Estimation
 
 Real-world regression problems are often not deterministic, meaning that for every possible input vector *x* a whole range of outputs *y* are probable.
