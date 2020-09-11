@@ -26,7 +26,7 @@
 #
 # CHANGELOG ##################################################################
 # modified by   : Marcel Arpogaus
-# modified time : 2020-09-11 15:19:56
+# modified time : 2020-09-11 17:03:42
 #  changes made : ...
 # modified by   : Marcel Arpogaus
 # modified time : 2020-05-15 10:44:23
@@ -37,69 +37,55 @@
 import tensorflow as tf
 
 from tensorflow_probability import distributions as tfd
-from tensorflow_probability import bijectors as tfb
 
-from ..bijectors import BernsteinBijector
-
-
-def bernstein_flow(M, a1, b1, theta, a2, b2, name='bsf'):
-    bijectors = []
-
-    # f1: ŷ = sigma(a1(x)*y - b1(x))
-    f1_scale = tfb.Scale(
-        a1,
-        name=f'{name}_f1_scale'
-    )
-    bijectors.append(f1_scale)
-    f1_shift = tfb.Shift(
-        b1,
-        name=f'{name}_f1_shift'
-    )
-    bijectors.append(f1_shift)
-    bijectors.append(tfb.Sigmoid())
-
-    # f2: ẑ = Berstein
-    f2 = BernsteinBijector(
-        len_theta=M,
-        theta=theta,
-        name=f'{name}_f2'
-    )
-    bijectors.append(f2)
-
-    # f3: z = a2(x)*ẑ - b2(x)
-    f3_scale = tfb.Scale(
-        a2,
-        name=f'{name}_f3_scale'
-    )
-    bijectors.append(f3_scale)
-    f3_shift = tfb.Shift(
-        b2,
-        name=f'{name}_f3_shift'
-    )
-    bijectors.append(f3_shift)
-
-    bijectors = list(reversed(bijectors))
-    return tfd.TransformedDistribution(
-        distribution=tfd.Normal(loc=0., scale=1.),
-        bijector=tfb.Invert(tfb.Chain(bijectors)),
-        event_shape=[1],
-        name='NormalTransformedDistribution')
+from bernstein_flow.bijectors import BernsteinBijector
+from bernstein_flow import build_bernstein_flow
 
 
 class BernsteinFlow():
+    """
+    This class implements a normalizing flow using Bernstein polynomials.
+    """
+
     def __init__(
             self,
-            M):
+            M: int):
+        """
+        Constructs a new instance of the flow. It can be used as Distribution a
+        distribution with `tfp.layers.DistributionLambda`.
+
+        To use it as a loss function see
+        `bernstein_flow.losses.BernsteinFlowLoss`.
+
+        :param      M:    Order of the used Bernstein polynomial bijector.
+        :type       M:    int
+        """
         self.M = M
 
-    def __call__(self, pvector):
+    def __call__(self, pvector: tf.Tensor) -> tfd.Distribution:
+        """
+        Calls `gen_flow(pvector)`.
+
+        :param      pvector:  The paramter vector.
+        :type       pvector:  Tensor
+
+        :returns:   The transformed distribution (normalizing flow)
+        :rtype:     Distribution
+        """
 
         flow = self.gen_flow(pvector)
 
         return flow
 
-    def slice_parameter_vectors(self, pvector):
-        """ Returns an unpacked list of paramter vectors.
+    def slice_parameter_vectors(self, pvector: tf.Tensor) -> list:
+        """
+        Returns an unpacked list of parameter vectors.
+
+        :param      pvector:  The parameter vector.
+        :type       pvector:  Tensor
+
+        :returns:   unpacked list of parameter vectors.
+        :rtype:     list
         """
         p_len = [1, 1, self.M, 1, 1]
         num_dist = pvector.shape[1]
@@ -111,12 +97,22 @@ class BernsteinFlow():
         return sliced_pvectors
 
     def gen_flow(self, pvector):
+        """
+        Generate the flow for the given parameter vector. This would be
+        typically the output of a neural network.
+
+        :param      pvector:  The paramter vector.
+        :type       pvector:  Tensor
+
+        :returns:   The transformed distribution (normalizing flow)
+        :rtype:     Distribution
+        """
         pvs = self.slice_parameter_vectors(pvector)
         flows = []
         for pv in pvs:
             a1, b1, theta, a2, b2 = pv
 
-            flow = bernstein_flow(
+            flow = build_bernstein_flow(
                 M=self.M,
                 a1=tf.math.softplus(a1),
                 b1=b1,

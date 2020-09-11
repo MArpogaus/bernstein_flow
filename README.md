@@ -5,7 +5,25 @@ The [`tf.Bijector`](https://www.tensorflow.org/probability/api_docs/python/tfp/b
 
 ## Installation and Usage
 
-You can find a minimal examples in the `ipynb' directory.
+Pull and install it directly from git using pip:
+
+```bash
+pip install git+https://github.com/MArpogaus/TensorFlow-Probability-Bernstein-Polynomial-Bijector.git
+```
+
+Or clone this repository an install it from there
+
+```bash
+git clone https://github.com/MArpogaus/TensorFlow-Probability-Bernstein-Polynomial-Bijector.git ./bernstein_flow
+cd bernstein_flow
+pip install -e .
+```
+
+## Examples
+
+You can find a two examples in the `ipynb' directory.
+
+**Note:** You might want to install the [`jupyter_latex_envs`](https://github.com/jfbercher/jupyter_latex_envs/) extension for Jupyter notebook to display the citations correctly.
 
 ## Normalizing Flows for Conditional Density Estimation
 

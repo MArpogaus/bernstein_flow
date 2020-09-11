@@ -17,7 +17,7 @@
 #
 # CHANGELOG ##################################################################
 # modified by   : Marcel Arpogaus
-# modified time : 2020-09-11 15:25:00
+# modified time : 2020-09-11 17:11:03
 #  changes made : using JointDistributionSequential
 # modified by   : Marcel Arpogaus
 # modified time : 2020-03-31 19:22:59
@@ -41,21 +41,48 @@ __date__ = "2020-03-31 19:22:59"
 # __version__ = ""
 
 # REQUIRED PYTHON MODULES #####################################################
+import tensorflow as tf
 from tensorflow.keras.losses import Loss
 
-from ..distributions import BernsteinFlow
+from bernstein_flow.distributions import BernsteinFlow
 
 
 class BernsteinFlowLoss(Loss):
+    """
+    This class describes a normalizing flow using Bernstein polynomials as
+    Keras Loss function
+    """
+
     def __init__(
             self,
-            M,
-            **kwargs):
+            M: int,
+            **kwargs: dict):
+        """
+        Constructs a new instance of the Keras Loss function.
+
+        :param      M:       Order of the used Bernstein polynomial bijector.
+        :type       M:       int
+        :param      kwargs:  Additional keyword arguments passed to the supper
+                             class
+        :type       kwargs:  dictionary
+        """
         self.bernstein_flow = BernsteinFlow(M)
         super().__init__(**kwargs)
 
-    def call(self, y, pvector):
+    def call(self,
+             y: tf.Tensor,
+             pvector: tf.Tensor) -> tf.Tensor:
+        """
+        Evaluates the negative logarithmic likelihood given a sample y.
 
+        :param      y:        A sample.
+        :type       y:        Tensor
+        :param      pvector:  The parameter vector for the normalizing flow.
+        :type       pvector:  Tensor
+
+        :returns:   negative logarithmic likelihood
+        :rtype:     Tensor
+        """
         flow = self.bernstein_flow(pvector)
 
         nll = -flow.log_prob(y)
