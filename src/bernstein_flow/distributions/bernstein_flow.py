@@ -26,7 +26,7 @@
 #
 # CHANGELOG ##################################################################
 # modified by   : Marcel Arpogaus
-# modified time : 2020-09-11 17:03:42
+# modified time : 2020-10-14 20:52:24
 #  changes made : ...
 # modified by   : Marcel Arpogaus
 # modified time : 2020-05-15 10:44:23
@@ -36,10 +36,10 @@
 # REQUIRED PYTHON MODULES #####################################################
 import tensorflow as tf
 
+from tensorflow_probability import bijectors as tfb
 from tensorflow_probability import distributions as tfd
 
 from bernstein_flow.bijectors import BernsteinBijector
-from bernstein_flow import build_bernstein_flow
 
 
 class BernsteinFlow():
@@ -47,9 +47,8 @@ class BernsteinFlow():
     This class implements a normalizing flow using Bernstein polynomials.
     """
 
-    def __init__(
-            self,
-            M: int):
+    def __init__(self,
+                 order: int):
         """
         Constructs a new instance of the flow. It can be used as Distribution a
         distribution with `tfp.layers.DistributionLambda`.
@@ -57,14 +56,15 @@ class BernsteinFlow():
         To use it as a loss function see
         `bernstein_flow.losses.BernsteinFlowLoss`.
 
-        :param      M:    Order of the used Bernstein polynomial bijector.
-        :type       M:    int
+        :param      order:  Order of the used Bernstein polynomial bijector.
+        :type       order:  int
         """
-        self.M = M
+        self.order = order
 
     def __call__(self, pvector: tf.Tensor) -> tfd.Distribution:
         """
-        Calls `gen_flow(pvector)`.
+        Generate the flow for the given parameter vector. This would be
+        typically the output of a neural network.
 
         :param      pvector:  The paramter vector.
         :type       pvector:  Tensor
@@ -72,8 +72,15 @@ class BernsteinFlow():
         :returns:   The transformed distribution (normalizing flow)
         :rtype:     Distribution
         """
+        a1, b1, theta, a2, b2 = self.slice_parameter_vectors(pvector)
 
-        flow = self.gen_flow(pvector)
+        flow = self.parameterize(
+            a1=tf.math.softplus(a1),
+            b1=b1,
+            theta=BernsteinBijector.constrain_theta(theta),
+            a2=tf.math.softplus(a2),
+            b2=b2
+        )
 
         return flow
 
@@ -87,41 +94,80 @@ class BernsteinFlow():
         :returns:   unpacked list of parameter vectors.
         :rtype:     list
         """
-        p_len = [1, 1, self.M, 1, 1]
-        num_dist = pvector.shape[1]
-        sliced_pvectors = []
-        for d in range(num_dist):
-            sliced_pvector = [pvector[:, d, sum(p_len[:i]):(
-                sum(p_len[:i + 1]))] for i, p in enumerate(p_len)]
-            sliced_pvectors.append(sliced_pvector)
-        return sliced_pvectors
+        p_len = [1, 1, self.order, 1, 1]
 
-    def gen_flow(self, pvector):
+        sliced_pvector = []
+        for i in range(len(p_len)):
+            p = pvector[..., sum(p_len[:i]): sum(p_len[:i + 1])]
+            sliced_pvector.append(tf.squeeze(p))
+
+        a1, b1, theta, a2, b2 = sliced_pvector
+
+        return a1, b1, theta, a2, b2
+
+    def parameterize(self,
+                     a1: tf.Tensor,
+                     b1: tf.Tensor,
+                     theta: tf.Tensor,
+                     a2: tf.Tensor,
+                     b2: tf.Tensor,
+                     name: str = 'bernstein_flow') -> tfd.Distribution:
         """
-        Generate the flow for the given parameter vector. This would be
-        typically the output of a neural network.
+        Builds a normalizing flow using a Bernstein polynomial as Bijector.
 
-        :param      pvector:  The paramter vector.
-        :type       pvector:  Tensor
+        :param      a1:     The scale of f1.
+        :type       a1:     Tensor
+        :param      b1:     The shift of f1.
+        :type       b1:     Tensor
+        :param      theta:  The Bernstein coefficients.
+        :type       theta:  Tensor
+        :param      a2:     The scale of f3.
+        :type       a2:     Tensor
+        :param      b2:     The shift of f3.
+        :type       b2:     Tensor
+        :param      name:   The name to give Ops created by the initializer.
+        :type       name:   string
 
-        :returns:   The transformed distribution (normalizing flow)
+        :returns:   The Bernstein flow.
         :rtype:     Distribution
         """
-        pvs = self.slice_parameter_vectors(pvector)
-        flows = []
-        for pv in pvs:
-            a1, b1, theta, a2, b2 = pv
+        bijectors = []
 
-            flow = build_bernstein_flow(
-                M=self.M,
-                a1=tf.math.softplus(a1),
-                b1=b1,
-                theta=BernsteinBijector.constrain_theta(theta),
-                a2=tf.math.softplus(a2),
-                b2=b2
-            )
+        # f1: ŷ = sigma(a1(x)*y - b1(x))
+        f1_scale = tfb.Scale(
+            a1,
+            name=f'{name}_f1_scale'
+        )
+        bijectors.append(f1_scale)
+        f1_shift = tfb.Shift(
+            b1,
+            name=f'{name}_f1_shift'
+        )
+        bijectors.append(f1_shift)
+        bijectors.append(tfb.Sigmoid())
 
-            flows.append(flow)
-        joint = tfd.JointDistributionSequential(flows, name='joint_bs_flows')
-        blkws = tfd.Blockwise(joint)
-        return blkws
+        # f2: ẑ = Bernstein Polynomial
+        f2 = BernsteinBijector(
+            order=self.order,
+            theta=theta,
+            name=f'{name}_f2'
+        )
+        bijectors.append(f2)
+
+        # f3: z = a2(x)*ẑ - b2(x)
+        f3_scale = tfb.Scale(
+            a2,
+            name=f'{name}_f3_scale'
+        )
+        bijectors.append(f3_scale)
+        f3_shift = tfb.Shift(
+            b2,
+            name=f'{name}_f3_shift'
+        )
+        bijectors.append(f3_shift)
+
+        bijectors = list(reversed(bijectors))
+        return tfd.TransformedDistribution(
+            distribution=tfd.Normal(loc=0., scale=1.),
+            bijector=tfb.Invert(tfb.Chain(bijectors)),
+            name='NormalTransformedDistribution')

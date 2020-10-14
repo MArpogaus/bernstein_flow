@@ -26,7 +26,7 @@
 #
 # CHANGELOG ##################################################################
 # modified by   : Marcel Arpogaus
-# modified time : 2020-09-11 15:25:46
+# modified time : 2020-10-14 20:10:44
 #  changes made : ...
 # modified by   : Marcel Arpogaus
 # modified time : 2020-04-13 16:04:37
@@ -56,7 +56,7 @@ def vizualize_flow_from_z_domain(flow):
     y_samples = np.squeeze(bijector.forward(z_samples))
 
     # p_y(y) = p_z(h^-1(y))*|h^-1'(y)| = p_z(z)*|h^-1'(y)|
-    ildj = bijector.inverse_log_det_jacobian(y_samples[..., None], 1)
+    ildj = bijector.inverse_log_det_jacobian(y_samples, 0)
     log_prob = base_dist.log_prob(z_samples)
     log_prob = log_prob + ildj
 
@@ -95,7 +95,7 @@ def vizualize_flow_from_z_domain(flow):
 
     p_mu_z = base_dist.prob(mu_z)
     p_mu_y = np.exp(base_dist.log_prob(mu_z) +
-                    bijector.inverse_log_det_jacobian(mu_y, 1))
+                    bijector.inverse_log_det_jacobian(mu_y, 0))
 
     cp_kwds = dict(
         color='darkgray',
