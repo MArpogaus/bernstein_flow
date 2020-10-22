@@ -132,13 +132,10 @@ class BernsteinBijector(tfb.Bijector):
 
         def ifn(z):
             y = []
-            print('z:', z)
             z_clip = np.clip(z, self.z_min + 1E-5, self.z_max - 1E-5)
             for i, ip in enumerate(ips):
                 y.append(ip(z_clip[:, i]).astype(np.float32))
-            print('y:', y)
-            y = np.stack(y, axis=0)
-            print('y:', y)
+            y = np.stack(y, axis=1)
 
             return y
 
@@ -157,14 +154,16 @@ class BernsteinBijector(tfb.Bijector):
         print('_inverse>>>>>>>>')
         if tf.executing_eagerly():
             print('z.shape:', z.shape)
-            if (tf.rank(z) == 1):
+            if (tf.rank(z) == 0):
+                def reshape_out(y): return tf.squeeze(y)
+            elif (tf.rank(z) == 1):
                 # [sample_shape, batch_shape, event_shape]
                 z = z[tf.newaxis, ...]
-                def reshape_out(y): return y  # [0]
+                def reshape_out(y): return y[0]
             elif (tf.rank(z) == 2 and z.shape[1] == self.batch_size):
                 # [sample_shape, batch_shape, event_shape]
                 z = z[..., tf.newaxis]
-                def reshape_out(y): return y  # [..., 0]
+                def reshape_out(y): return y[..., 0]
             else:
                 z = z
                 def reshape_out(y): return y
@@ -192,11 +191,11 @@ class BernsteinBijector(tfb.Bijector):
         print('_forward>>>>>>>>')
         print('y.shape:', y.shape)
         if (tensorshape_util.rank(y.shape) == 1) and \
-                (y.shape[0] != self.batch_size):
+             (y.shape[0] != self.batch_size):
             #y = tf.transpose(y, [1, 0])
             # [sample_shape, batch_shape, event_shape]
             y = y[..., tf.newaxis, tf.newaxis]
-            def reshape_out(z): return z  # tf.transpose(z, [1, 0])
+            def reshape_out(z): return z#tf.transpose(z, [1, 0])
         else:
             y = y[..., tf.newaxis]
             def reshape_out(z): return z
@@ -218,11 +217,11 @@ class BernsteinBijector(tfb.Bijector):
         print('_forward_log_det_jacobian>>>>>>>>')
         print('y.shape:', y.shape)
         if (tensorshape_util.rank(y.shape) == 1) and \
-                (y.shape[0] != self.batch_size):
+             (y.shape[0] != self.batch_size):
             #y = tf.transpose(y, [1, 0])
             # [sample_shape, batch_shape, event_shape]
             y = y[..., tf.newaxis, tf.newaxis]
-            def reshape_out(z): return z  # tf.transpose(z, [1, 0])
+            def reshape_out(z): return z#tf.transpose(z, [1, 0])
         else:
             y = y[..., tf.newaxis]
             def reshape_out(z): return z

@@ -41,6 +41,8 @@ from tensorflow_probability import distributions as tfd
 
 from bernstein_flow.bijectors import BernsteinBijector
 
+from tensorflow_probability.python.internal import tensorshape_util
+
 
 class BernsteinFlow():
     """
@@ -72,6 +74,11 @@ class BernsteinFlow():
         :returns:   The transformed distribution (normalizing flow)
         :rtype:     Distribution
         """
+        if tensorshape_util.rank(pvector.shape) == 1:
+            self.batch_size = 1
+        else:
+            self.batch_size = pvector.shape[0]
+
         a1, b1, theta, a2, b2 = self.slice_parameter_vectors(pvector)
 
         flow = self.parameterize(
@@ -98,8 +105,8 @@ class BernsteinFlow():
 
         sliced_pvector = []
         for i in range(len(p_len)):
-            p = pvector[..., sum(p_len[:i]): sum(p_len[:i + 1])]
-            sliced_pvector.append(p)
+            p = pvector[..., sum(p_len[:i]):sum(p_len[:i + 1])]
+            sliced_pvector.append(tf.squeeze(p))
 
         a1, b1, theta, a2, b2 = sliced_pvector
 
@@ -134,7 +141,7 @@ class BernsteinFlow():
         bijectors = []
 
         if tf.executing_eagerly():
-            batch_shape = a1.shape
+            batch_shape = [self.batch_size]
         else:
             batch_shape = []
 
@@ -175,8 +182,7 @@ class BernsteinFlow():
 
         bijectors = list(reversed(bijectors))
         return tfd.TransformedDistribution(
-            distribution=tfd.Normal(
-                loc=tf.zeros_like(a1), scale=tf.ones_like(a1)),
+            distribution=tfd.Normal(loc=0., scale=1.),
             bijector=tfb.Invert(tfb.Chain(bijectors)),
-            # batch_shape=batch_shape,
+            batch_shape=batch_shape,
             name='NormalTransformedDistribution')
