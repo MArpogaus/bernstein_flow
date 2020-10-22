@@ -1,11 +1,18 @@
 #!env python3
 # AUTHOR INFORMATION ##########################################################
-# file   : visualization.py
-# brief  : [Description]
+# file    : visualization.py
+# brief   : [Description]
 #
-# author : Marcel Arpogaus
-# date   : 2020-04-13 16:04:37
-# COPYRIGHT ###################################################################
+# author  : Marcel Arpogaus
+# created : 2020-04-13 16:04:37
+# changed : 2020-10-16 08:24:18
+# DESCRIPTION #################################################################
+#
+# This project is following the PEP8 style guide:
+#
+#    https://www.python.org/dev/peps/pep-0008/)
+#
+# LICENSE #####################################################################
 # Copyright 2020 Marcel Arpogaus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,18 +26,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# NOTES ######################################################################
-#
-# This project is following the
-# [PEP8 style guide](https://www.python.org/dev/peps/pep-0008/)
-#
-# CHANGELOG ##################################################################
-# modified by   : Marcel Arpogaus
-# modified time : 2020-10-14 20:10:44
-#  changes made : ...
-# modified by   : Marcel Arpogaus
-# modified time : 2020-04-13 16:04:37
-#  changes made : newly written
 ###############################################################################
 
 # REQUIRED PYTHON MODULES #####################################################

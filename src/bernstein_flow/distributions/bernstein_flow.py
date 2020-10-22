@@ -99,7 +99,7 @@ class BernsteinFlow():
         sliced_pvector = []
         for i in range(len(p_len)):
             p = pvector[..., sum(p_len[:i]): sum(p_len[:i + 1])]
-            sliced_pvector.append(tf.squeeze(p))
+            sliced_pvector.append(p)
 
         a1, b1, theta, a2, b2 = sliced_pvector
 
@@ -132,6 +132,13 @@ class BernsteinFlow():
         :rtype:     Distribution
         """
         bijectors = []
+
+        if tf.executing_eagerly():
+            batch_shape = a1.shape
+        else:
+            batch_shape = []
+
+        print(batch_shape)
 
         # f1: ŷ = sigma(a1(x)*y - b1(x))
         f1_scale = tfb.Scale(
@@ -168,6 +175,8 @@ class BernsteinFlow():
 
         bijectors = list(reversed(bijectors))
         return tfd.TransformedDistribution(
-            distribution=tfd.Normal(loc=0., scale=1.),
+            distribution=tfd.Normal(
+                loc=tf.zeros_like(a1), scale=tf.ones_like(a1)),
             bijector=tfb.Invert(tfb.Chain(bijectors)),
+            # batch_shape=batch_shape,
             name='NormalTransformedDistribution')
