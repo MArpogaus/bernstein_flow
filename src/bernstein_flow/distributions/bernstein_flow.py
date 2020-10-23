@@ -44,52 +44,52 @@ from bernstein_flow.bijectors import BernsteinBijector
 from tensorflow_probability.python.internal import tensorshape_util
 
 
-class BernsteinFlow():
+class BernsteinFlow(tfd.TransformedDistribution):
     """
     This class implements a normalizing flow using Bernstein polynomials.
     """
 
     def __init__(self,
-                 order: int):
-        """
-        Constructs a new instance of the flow. It can be used as Distribution a
-        distribution with `tfp.layers.DistributionLambda`.
-
-        To use it as a loss function see
-        `bernstein_flow.losses.BernsteinFlowLoss`.
-
-        :param      order:  Order of the used Bernstein polynomial bijector.
-        :type       order:  int
-        """
-        self.order = order
-
-    def __call__(self, pvector: tf.Tensor) -> tfd.Distribution:
+                 pvector: tf.Tensor,
+                 distribution: tfd.Distribution = tfd.Normal(loc=0., scale=1.)
+                 ) -> tfd.Distribution:
         """
         Generate the flow for the given parameter vector. This would be
         typically the output of a neural network.
 
-        :param      pvector:  The paramter vector.
-        :type       pvector:  Tensor
+        To use it as a loss function see
+        `bernstein_flow.losses.BernsteinFlowLoss`.
+
+        :param      pvector:       The paramter vector.
+        :type       pvector:       Tensor
+        :param      distribution:  The base distribution to use.
+        :type       distribution:  Distribution
 
         :returns:   The transformed distribution (normalizing flow)
         :rtype:     Distribution
         """
         if tensorshape_util.rank(pvector.shape) == 1:
-            self.batch_size = 1
+            self.order = pvector.shape[0] - 4
         else:
-            self.batch_size = pvector.shape[0]
+            self.order = pvector.shape[1] - 4
+
+        batch_shape = [pvector.shape[0] or 1]
 
         a1, b1, theta, a2, b2 = self.slice_parameter_vectors(pvector)
 
-        flow = self.parameterize(
-            a1=tf.math.softplus(a1),
+        bijector = self.init_bijectors(
+            a1=1e-3 + tf.math.softplus(0.05 + a1),
             b1=b1,
             theta=BernsteinBijector.constrain_theta(theta),
-            a2=tf.math.softplus(a2),
+            a2=1e-3 + tf.math.softplus(0.05 + a2),
             b2=b2
         )
 
-        return flow
+        super().__init__(
+            distribution=tfd.Normal(loc=0., scale=1.),
+            bijector=bijector,
+            batch_shape=batch_shape,
+            name='NormalTransformedDistribution')
 
     def slice_parameter_vectors(self, pvector: tf.Tensor) -> list:
         """
@@ -112,13 +112,13 @@ class BernsteinFlow():
 
         return a1, b1, theta, a2, b2
 
-    def parameterize(self,
-                     a1: tf.Tensor,
-                     b1: tf.Tensor,
-                     theta: tf.Tensor,
-                     a2: tf.Tensor,
-                     b2: tf.Tensor,
-                     name: str = 'bernstein_flow') -> tfd.Distribution:
+    def init_bijectors(self,
+                       a1: tf.Tensor,
+                       b1: tf.Tensor,
+                       theta: tf.Tensor,
+                       a2: tf.Tensor,
+                       b2: tf.Tensor,
+                       name: str = 'bernstein_flow') -> tfb.Bijector:
         """
         Builds a normalizing flow using a Bernstein polynomial as Bijector.
 
@@ -136,16 +136,9 @@ class BernsteinFlow():
         :type       name:   string
 
         :returns:   The Bernstein flow.
-        :rtype:     Distribution
+        :rtype:     Bijector
         """
         bijectors = []
-
-        if tf.executing_eagerly():
-            batch_shape = [self.batch_size]
-        else:
-            batch_shape = []
-
-        print(batch_shape)
 
         # f1: ŷ = sigma(a1(x)*y - b1(x))
         f1_scale = tfb.Scale(
@@ -181,8 +174,5 @@ class BernsteinFlow():
         bijectors.append(f3_shift)
 
         bijectors = list(reversed(bijectors))
-        return tfd.TransformedDistribution(
-            distribution=tfd.Normal(loc=0., scale=1.),
-            bijector=tfb.Invert(tfb.Chain(bijectors)),
-            batch_shape=batch_shape,
-            name='NormalTransformedDistribution')
+
+        return tfb.Invert(tfb.Chain(bijectors))
