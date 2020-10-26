@@ -5,7 +5,7 @@
 #
 # author  : Marcel Arpogaus
 # created : 2020-04-13 16:04:37
-# changed : 2020-10-23 18:27:59
+# changed : 2020-10-26 10:55:48
 # DESCRIPTION #################################################################
 #
 # This project is following the PEP8 style guide:
@@ -37,14 +37,14 @@ import numpy as np
 
 
 # function definitions ########################################################
-def vizualize_flow_from_z_domain(flow):
+def vizualize_flow_from_z_domain(flow, z_min=-3, z_max=3):
     bijector = flow.bijector
     base_dist = flow.distribution
 
     n = 1000
 
     # z ~ p_z
-    z_samples = np.linspace(-3, 3, n, dtype=np.float32)
+    z_samples = np.linspace(z_min, z_max, n, dtype=np.float32)
     z_probs = base_dist.prob(z_samples)
 
     # y = h(z)

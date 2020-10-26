@@ -10,16 +10,12 @@
 This Repository contains a implementation of a normalizing flow for conditional density estimation using Bernstein polynomials, as proposed in [4].
 The [`tfp.Bijector`][bijector] interface is used for the implementation to benefit from the powerful [TensorFlow Probability][tensorflow-probability] framework.
 
-<!-- MarkdownTOC -->
+<!-- MarkdownTOC levels=2 -->
 
-- [Motivation](#motivation)
-- [Installation](#installation)
+- [The Need for Flexible Distributions](#the-need-for-flexible-distributions)
 - [Usage](#usage)
-	- [Gaussian Model](#gaussian-model)
-	- [Normalizing FLow](#normalizing-flow)
 - [Examples](#examples)
-- [Normalizing Flows for Conditional Density Estimation](#normalizing-flows-for-conditional-density-estimation)
-- [Deep Transformation Model](#deep-transformation-model)
+- [Theory](#theory)
 - [Contributing](#contributing)
 - [License](#license)
 - [References](#references)
@@ -27,13 +23,25 @@ The [`tfp.Bijector`][bijector] interface is used for the implementation to benef
 <!-- /MarkdownTOC -->
 
 
-## Motivation
+## The Need for Flexible Distributions
+
+Traditional regression models assume normality and homoscedasticity of the data, i.e. the residuals for each input value are expected to be normally distributed with constant variance.
+However, the shape of the data distribution in many real use cases is much more complex.
+
+The following example of a classical data set containing the waiting time between eruptions of the [Old Faithful Geyser](https://en.wikipedia.org/wiki/Old_Faithful) in [Yellowstone National Park](https://en.wikipedia.org/wiki/Yellowstone_National_Park) is used as an example.
 
 | Gaussian                                                     | Normalizing Flow                           |
 |:-------------------------------------------------------------|:-------------------------------------------|
 | ![gauss](gfx/gauss.png)                                      | ![flow](gfx/flow.png)                      |
 
-## Installation
+As shown in the left figure, the normality assumption is clearly violated by the bimodal nature of the data.
+However, the proposed transformation model has the flexibility to adapt to this complexity.
+
+### Getting Started
+
+To start using my code follow these simple steps.
+
+### Installation
 
 Pull and install it directly from git using pip:
 
@@ -49,18 +57,41 @@ cd bernstein_flow
 pip install -e .
 ```
 
+### Prerequisites
+
+Pip should handle take care of installing the required dependencies on its own.
+For completeness, these are the packages used by the implementation:
+
+ * [`matplotlib`][matplotlib]
+ * [`numpy`][numpy]
+ * [`scipy`][scipy]
+ * [`tensorflow`][tensorflow]
+ * [`tensorflow_probability`][tensorflow-probability]
+
 ## Usage
 
-A ready to use [`tfd.TransformedDistribution`][transformed-distribution] using the [BernsteinBijector][bernstein-bijector] is provided in the module `bernstein_flow.distributions`.
+### Package Structure 
 
-Just import it
+This python package consists of four main components:
+
+ * `berstein_flow.bijectors.BernsteinBijector`: The implementation of Bernstein polynomials using the `tfb.Bijector` interface for
+    transformations of `tfd.Distribution` samples.
+ * `berstein_flow.distributions.BernsteinFlow`:  The implementation of a `tfd.TransformedDistribution` using the Bernstein
+    polynomials as the bijector.
+ * `berstein_flow.losses.BernsteinFlowLoss`: The implementation of a `tfk.losses.Loss` function to calculate the negative logarithmic likelihood using the `BernstinFlow` distribution.
+ * `berstein_flow.util.visualization`: Contains of some convenient helper functions for visualization.
+
+### Using the Model as a `tfpl.DistributionLambda`
+
+A [`tfd.TransformedDistribution`][transformed-distribution] using the [BernsteinBijector][bernstein-bijector] is provided in the module `bernstein_flow.distributions.BernsteinFlow`:
 
 ```python
 from bernstein_flow.distributions import BernsteinFlow
 ```
 
-and use it like any other distribution, i.e. as a [`tfpl.DistributionLambda`][distribution-lambda].
+Use it like any other distribution, i.e. as a [`tfpl.DistributionLambda`][distribution-lambda].
 
+The two example plots shown above have been generated using the following two models.
 
 ### Gaussian Model
 
@@ -86,11 +117,11 @@ flow_model.add(tfp.layers.DistributionLambda(BernsteinFlow(order=5)))
 
 ## Examples
 
-You can find a two examples in the `ipynb` directory.
+You can find more examples in the `ipynb` directory.
 
-**Note:** You might want to install the [`jupyter_latex_envs`](https://github.com/jfbercher/jupyter_latex_envs/) extension for Jupyter notebook to display the citations correctly.
+## Theory
 
-## Normalizing Flows for Conditional Density Estimation
+### Normalizing Flows for Conditional Density Estimation
 
 Real-world regression problems are often not deterministic, meaning that for every possible input vector *x* a whole range of outputs *y* are probable.
 In such cases it is not sufficient to just predict a single point, but rather the conditioned probability density function *p(y|x)* for *y* given the input *x*.
@@ -106,7 +137,7 @@ The following illustration shows a conditioned normalizing flow model, transform
 
 ![](gfx/conditioned_normalizing_flow.svg)
 
-## Deep Transformation Model 
+### Deep Transformation Model 
 
 A recent work [4] presented a new type of flow-based transformation models especially optimized for CDE. In that work 
 ideas from statistical transformation models [3] and deep normalizing flows [1] are joined. These *deep normalizing flows* outperform existing models for complex distributions far away from Gaussian. Compared to the statistical transformation models the proposed deep transformation model does not require predefined features and can be trained in an end-to-end fashion from complex data. The very expressive Bernstein polynomials are used as basis transformations [3] combined in a composition of four different transformation functions to build a NF.
@@ -159,7 +190,11 @@ Distributed under the [Apache License 2.0](LICENSE)
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=flat-square&logo=linkedin&colorB=555
 [linkedin-url]: https://linkedin.com/in/MArpogaus
 [bijector]: https://www.tensorflow.org/probability/api_docs/python/tfp/bijectors/Bijector
-[tensorflow-probability]: https://github.com/tensorflow/probability
+[tensorflow-probability]: https://www.tensorflow.org/probability
+[matplotlib]: https://matplotlib.org/
+[numpy]: https://numpy.org/
+[scipy]: https://scipy.org/
+[tensorflow]: https://www.tensorflow.org/
 [transformed-distribution]: https://www.tensorflow.org/probability/api_docs/python/tfp/distributions/TransformedDistribution
 [bernstein-bijector]: https://github.com/MArpogaus/TensorFlow-Probability-Bernstein-Polynomial-Bijector/blob/master/src/bernstein_flow/bijectors/bernstein_bijector.py
 [distribution-lambda]: https://www.tensorflow.org/probability/api_docs/python/tfp/layers/DistributionLambda

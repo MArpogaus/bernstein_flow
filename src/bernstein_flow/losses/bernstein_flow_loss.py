@@ -5,7 +5,7 @@
 #
 # author  : Marcel Arpogaus
 # created : 2020-03-31 19:22:59
-# changed : 2020-10-16 08:24:17
+# changed : 2020-10-26 11:11:39
 # DESCRIPTION #################################################################
 #
 # This project is following the PEP8 style guide:
@@ -37,13 +37,12 @@ from bernstein_flow.distributions import BernsteinFlow
 
 class BernsteinFlowLoss(Loss):
     """
-    This class describes a normalizing flow using Bernstein polynomials as
-    Keras Loss function
+    This Keras Loss function implements the negative logarithmic likelihood for
+    a bijective transformation model using Bernstein polynomials.
     """
 
     def __init__(
             self,
-            M: int,
             **kwargs: dict):
         """
         Constructs a new instance of the Keras Loss function.
@@ -54,7 +53,6 @@ class BernsteinFlowLoss(Loss):
                              class
         :type       kwargs:  dictionary
         """
-        self.bernstein_flow = BernsteinFlow(M)
         super().__init__(**kwargs)
 
     def call(self,
@@ -71,7 +69,7 @@ class BernsteinFlowLoss(Loss):
         :returns:   negative logarithmic likelihood
         :rtype:     Tensor
         """
-        flow = self.bernstein_flow(pvector)
+        flow = BernsteinFlow(pvector)
 
         nll = -flow.log_prob(y)
 

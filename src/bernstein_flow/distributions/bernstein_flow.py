@@ -46,7 +46,8 @@ from tensorflow_probability.python.internal import tensorshape_util
 
 class BernsteinFlow(tfd.TransformedDistribution):
     """
-    This class implements a normalizing flow using Bernstein polynomials.
+    This class implements a `tfd.TransformedDistribution` using Bernstein
+    polynomials as the bijector.
     """
 
     def __init__(self,
@@ -70,10 +71,10 @@ class BernsteinFlow(tfd.TransformedDistribution):
         """
         if tensorshape_util.rank(pvector.shape) == 1:
             self.order = pvector.shape[0] - 4
+            batch_shape = tf.TensorShape([1])
         else:
             self.order = pvector.shape[1] - 4
-
-        batch_shape = [pvector.shape[0] or 1]
+            batch_shape = tf.TensorShape([pvector.shape[0] or 1])
 
         a1, b1, theta, a2, b2 = self.slice_parameter_vectors(pvector)
 
