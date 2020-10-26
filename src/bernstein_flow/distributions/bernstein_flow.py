@@ -79,10 +79,10 @@ class BernsteinFlow(tfd.TransformedDistribution):
         a1, b1, theta, a2, b2 = self.slice_parameter_vectors(pvector)
 
         bijector = self.init_bijectors(
-            a1=1e-3 + tf.math.softplus(0.05 + a1),
+            a1=tf.math.softplus(a1),
             b1=b1,
             theta=BernsteinBijector.constrain_theta(theta),
-            a2=1e-3 + tf.math.softplus(0.05 + a2),
+            a2=tf.math.softplus(a2),
             b2=b2
         )
 

@@ -15,7 +15,6 @@ The [`tfp.Bijector`][bijector] interface is used for the implementation to benef
 - [The Need for Flexible Distributions](#the-need-for-flexible-distributions)
 - [Usage](#usage)
 - [Examples](#examples)
-- [Theory](#theory)
 - [Contributing](#contributing)
 - [License](#license)
 - [References](#references)
@@ -35,7 +34,7 @@ The following example of a classical data set containing the waiting time betwee
 | ![gauss](gfx/gauss.png)                                      | ![flow](gfx/flow.png)                      |
 
 As shown in the left figure, the normality assumption is clearly violated by the bimodal nature of the data.
-However, the proposed transformation model has the flexibility to adapt to this complexity.
+However, the proposed transformation model, however, has the flexibility to adapt to this complexity.
 
 ### Getting Started
 
@@ -119,20 +118,6 @@ flow_model.add(tfp.layers.DistributionLambda(BernsteinFlow(order=5)))
 
 You can find more examples in the `ipynb` directory.
 
-## Theory
-
-### Normalizing Flows for Conditional Density Estimation
-
-Real-world regression problems are often not deterministic, meaning that for every possible input vector *x* a whole range of outputs *y* are probable.
-In such cases it is not sufficient to just predict a single point, but rather the conditioned probability density function *p(y|x)* for *y* given the input *x*.
-This class of machine learning problems is commonly referred to as conditional density estimation (CDE).
-
-Normalizing flows (NF) [1] are transformation models that can be used for density estimation.
-Instead of parametrizing a density function to fit the shape of the desired conditional probability distribution, they use a single simple probability density function, usually a Gaussian, as a *base distribution* and pass it through a series of special transformation functions until it is most similar to the empirical *data distribution*.
-This composition of simple transformation functions allows NF based models to be very expressive, while staying computational efficient [2].
-Conditioned normalizing flows can be used for complex CDE, without assuming much about their shape [3, 4].
-Their expressiveness, however, is highly dependent on the flexibility of the used transformation functions.
-
 The following illustration shows a conditioned normalizing flow model, transforming a complex conditioned distribution step by step to a simple Gaussian distribution, conditioned on some value *x*. The visualization was inspired by [17].
 
 ![](gfx/conditioned_normalizing_flow.svg)
@@ -150,14 +135,15 @@ This way each input *x* yields a different parametrization of the flow and thus 
 
 ## Contributing
 
-If you find an issue require additional features  
-Any contributions are **greatly appreciated**.
+If you have any technical issues or suggestion regarding my implementation, please feel free to either [contact me](mailto:marcel.arpogaus@gmail.com), [open an issue][open-an-issue] or send me a Pull Request:
 
 1. Fork the Project
 2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
 3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
+
+Any contributions are **greatly appreciated**.
 
 ## License
 
@@ -198,3 +184,4 @@ Distributed under the [Apache License 2.0](LICENSE)
 [transformed-distribution]: https://www.tensorflow.org/probability/api_docs/python/tfp/distributions/TransformedDistribution
 [bernstein-bijector]: https://github.com/MArpogaus/TensorFlow-Probability-Bernstein-Polynomial-Bijector/blob/master/src/bernstein_flow/bijectors/bernstein_bijector.py
 [distribution-lambda]: https://www.tensorflow.org/probability/api_docs/python/tfp/layers/DistributionLambda
+[open-an-issue]: https://github.com/MArpogaus/TensorFlow-Probability-Bernstein-Polynomial-Bijector/issues/new
