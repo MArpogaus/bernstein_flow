@@ -34,7 +34,7 @@ The following example of a classical data set containing the waiting time betwee
 | ![gauss](gfx/gauss.png)                                      | ![flow](gfx/flow.png)                      |
 
 As shown in the left figure, the normality assumption is clearly violated by the bimodal nature of the data.
-However, the proposed transformation model, however, has the flexibility to adapt to this complexity.
+However, the proposed transformation model has the flexibility to adapt to this complexity.
 
 ### Getting Started
 
