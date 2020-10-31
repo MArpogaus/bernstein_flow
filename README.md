@@ -60,8 +60,8 @@ pip install -e .
 
 ### Prerequisites
 
-Pip should handle take care of installing the required dependencies on its own.
-For completeness, these are the packages used by the implementation:
+Pip should take care of installing the required dependencies on its own.
+For completeness, these are the packages used in the implementation:
 
  * [`matplotlib`][matplotlib]
  * [`numpy`][numpy]
