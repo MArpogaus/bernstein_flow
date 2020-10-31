@@ -71,10 +71,10 @@ class BernsteinFlow(tfd.TransformedDistribution):
         """
         if tensorshape_util.rank(pvector.shape) == 1:
             self.order = pvector.shape[0] - 4
-            batch_shape = tf.TensorShape([1])
+            batch_shape = [1]
         else:
-            self.order = pvector.shape[1] - 4
-            batch_shape = tf.TensorShape([pvector.shape[0] or 1])
+            self.order = pvector.shape[-1] - 4
+            batch_shape = [pvector.shape[0]] if pvector.shape[0] else None
 
         a1, b1, theta, a2, b2 = self.slice_parameter_vectors(pvector)
 
@@ -89,8 +89,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
         super().__init__(
             distribution=tfd.Normal(loc=0., scale=1.),
             bijector=bijector,
-            batch_shape=batch_shape,
-            name='NormalTransformedDistribution')
+            batch_shape=batch_shape)
 
     def slice_parameter_vectors(self, pvector: tf.Tensor) -> list:
         """
