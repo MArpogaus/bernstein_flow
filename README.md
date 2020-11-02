@@ -16,6 +16,7 @@ The [`tfp.Bijector`][bijector] interface is used for the implementation to benef
 <!-- MarkdownTOC levels=2 -->
 
 - [The Need for Flexible Distributions](#the-need-for-flexible-distributions)
+- [Getting Started](#getting-started)
 - [Usage](#usage)
 - [Examples](#examples)
 - [Contributing](#contributing)
@@ -38,7 +39,7 @@ The following example of a classical data set containing the waiting time betwee
 As shown in the left figure, the normality assumption is clearly violated by the bimodal nature of the data.
 However, the proposed transformation model has the flexibility to adapt to this complexity.
 
-### Getting Started
+## Getting Started
 
 To start using my code follow these simple steps.
 
