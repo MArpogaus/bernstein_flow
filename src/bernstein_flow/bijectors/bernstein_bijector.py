@@ -1,10 +1,17 @@
 #!env python3
 # AUTHOR INFORMATION ##########################################################
-# file   : bernstein_bijector.py
-# brief  : [Description]
+# file    : bernstein_bijector.py
+# brief   : [Description]
 #
-# author : Marcel Arpogaus
-# date   : 2020-09-11 14:14:24
+# author  : Marcel Arpogaus
+# created : 2020-09-11 14:14:24
+# changed : 2020-11-19 12:54:02
+# DESCRIPTION #################################################################
+#
+# This project is following the PEP8 style guide:
+#
+#    https://www.python.org/dev/peps/pep-0008/)
+#
 # COPYRIGHT ###################################################################
 # Copyright 2020 Marcel Arpogaus
 #
@@ -19,18 +26,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# NOTES ######################################################################
-#
-# This project is following the
-# [PEP8 style guide](https://www.python.org/dev/peps/pep-0008/)
-#
-# CHANGELOG ##################################################################
-# modified by   : Marcel Arpogaus
-# modified time : 2020-10-14 20:24:44
-#  changes made : ...
-# modified by   : Marcel Arpogaus
-# modified time : 2020-09-11 14:14:24
-#  changes made : newly written
 ###############################################################################
 
 # REQUIRED PYTHON MODULES #####################################################
@@ -149,8 +144,8 @@ class BernsteinBijector(tfb.Bijector):
                 def reshape_out(y): return tf.squeeze(y)
             elif z.shape == self.batch_shape:
                 # [sample_shape, batch_shape, event_shape]
-                z = z[tf.newaxis, ...]
-                def reshape_out(y): return y[0]
+                z = z[tf.newaxis, ..., tf.newaxis]
+                def reshape_out(y): return y[0, :, 0]
             elif (tf.rank(z) == 2) and (z.shape[1] == self.batch_shape[0]):
                 # [sample_shape, batch_shape, event_shape]
                 z = z[..., tf.newaxis]
