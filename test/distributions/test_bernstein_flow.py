@@ -5,7 +5,7 @@
 #
 # author  : Marcel Arpogaus
 # created : 2020-10-22 10:46:18
-# changed : 2020-10-23 11:25:34
+# changed : 2020-11-22 19:20:43
 # DESCRIPTION #################################################################
 #
 # This project is following the PEP8 style guide:
@@ -30,7 +30,6 @@
 
 # REQUIRED PYTHON MODULES #####################################################
 import tensorflow as tf
-import tensorflow.keras.layers as tfkl
 
 import tensorflow_probability as tfp
 from tensorflow_probability import distributions as tfd
@@ -38,53 +37,53 @@ from tensorflow_probability import distributions as tfd
 from bernstein_flow.distributions import BernsteinFlow
 
 
-class DistributionLambdaTest(tf.test.TestCase):
+class BernsteinFlowTest(tf.test.TestCase):
 
     def gen_sequential_model(
             self,
-            input_shape,
-            hidden_units,
+            output_shape,
             distribution_lambda):
         # Create a trainable distribution using the Sequential API.
         model = tf.keras.models.Sequential([
-            tfkl.InputLayer(input_shape=input_shape, dtype=tf.float32),
+            tf.keras.layers.InputLayer(input_shape=(1,), dtype=tf.float32),
             # The Dense serves no real purpose; it will change the event_shape.
-            tf.keras.layers.Dense(hidden_units, use_bias=False),
+            tf.keras.layers.Dense(tf.math.reduce_prod(
+                output_shape), use_bias=False),
+            tf.keras.layers.Reshape(output_shape),
             tfp.layers.DistributionLambda(distribution_lambda)
         ])
+        model.summary()
         return model
 
-    def test_sequential_api(self):
+    def gen_dist(self, batch_shape):
+        order = 5
+        if batch_shape != []:
+            n = tfd.Normal(loc=tf.zeros((batch_shape)),
+                           scale=tf.ones((batch_shape)))
+            bs = BernsteinFlow(tf.ones(batch_shape + [4 + order]))
+        else:
+            n = tfd.Normal(loc=tf.zeros((1)), scale=tf.ones((1)))
+            bs = BernsteinFlow(tf.ones((4 + order)))
+        return n, bs
+
+    def test_dist(self, batch_shape=[]):
         bernstein_order = 5
-        input_shape = (1,)
 
-        normal_model = self.gen_sequential_model(
-            input_shape=input_shape,
-            hidden_units=2,
-            distribution_lambda=lambda pv: tfd.Normal(
-                loc=pv[:, 0],
-                scale=1e-3 + tf.math.softplus(0.05 * pv[:, 1])))
-        trans_model = self.gen_sequential_model(
-            input_shape=input_shape,
-            hidden_units=4 + bernstein_order,
-            distribution_lambda=lambda pv: BernsteinFlow(
-                pvector=pv))
+        normal_dist, trans_dist = self.gen_dist(batch_shape)
 
-        for input_shape in [[1], [2], [32]]:
-            normal_dist = normal_model(tf.zeros(input_shape))
-            trans_dist = trans_model(tf.zeros(input_shape))
+        for input_shape in [[1], [1, 1], [1] + batch_shape]:
 
             # Check the distribution.
             self.assertIsInstance(trans_dist, tfd.TransformedDistribution)
             self.assertEqual(normal_dist.batch_shape, trans_dist.batch_shape)
             self.assertEqual(normal_dist.event_shape, trans_dist.event_shape)
-            self.assertEqual(normal_dist.sample(5).shape,
-                             trans_dist.sample(5).shape)
             self.assertEqual(normal_dist.sample(input_shape).shape,
                              trans_dist.sample(input_shape).shape)
-            self.assertEqual(normal_dist.log_prob(tf.zeros((1))).shape,
-                             trans_dist.log_prob(tf.zeros((1))).shape)
-            self.assertEqual(normal_dist.log_prob(tf.zeros(input_shape)).shape,
-                             trans_dist.log_prob(tf.zeros(input_shape)).shape)
-            self.assertEqual(normal_dist.log_prob(tf.zeros((10, 1))).shape,
-                             trans_dist.log_prob(tf.zeros((10, 1))).shape)
+            self.assertEqual(normal_dist.prob(tf.zeros(input_shape)).shape,
+                             trans_dist.prob(tf.zeros(input_shape)).shape)
+
+    def test_dist_batch(self):
+        self.test_dist(batch_shape=[32])
+
+    def test_dist_multi(self):
+        self.test_dist(batch_shape=[32, 48])

@@ -1,10 +1,17 @@
 #!env python3
 # AUTHOR INFORMATION ##########################################################
-# file   : bernstein_flow.py
-# brief  : [Description]
+# file    : bernstein_flow.py
+# brief   : [Description]
 #
-# author : Marcel Arpogaus
-# date   : 2020-05-15 10:44:23
+# author  : Marcel Arpogaus
+# created : 2020-05-15 10:44:23
+# changed : 2020-11-23 12:35:46
+# DESCRIPTION #################################################################
+#
+# This project is following the PEP8 style guide:
+#
+#    https://www.python.org/dev/peps/pep-0008/)
+#
 # COPYRIGHT ###################################################################
 # Copyright 2020 Marcel Arpogaus
 #
@@ -19,18 +26,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# NOTES ######################################################################
-#
-# This project is following the
-# [PEP8 style guide](https://www.python.org/dev/peps/pep-0008/)
-#
-# CHANGELOG ##################################################################
-# modified by   : Marcel Arpogaus
-# modified time : 2020-10-14 20:52:24
-#  changes made : ...
-# modified by   : Marcel Arpogaus
-# modified time : 2020-05-15 10:44:23
-#  changes made : newly written
 ###############################################################################
 
 # REQUIRED PYTHON MODULES #####################################################
@@ -74,7 +69,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
             batch_shape = [1]
         else:
             self.order = pvector.shape[-1] - 2
-            batch_shape = [pvector.shape[0]] if pvector.shape[0] else None
+            batch_shape = pvector.shape[:-1] if pvector.shape[0] else None
 
         a1, b1, theta = self.slice_parameter_vectors(pvector)
 
@@ -147,6 +142,8 @@ class BernsteinFlow(tfd.TransformedDistribution):
             name=f'{name}_f1_shift'
         )
         bijectors.append(f1_shift)
+
+        # clip to valid range [0,1]
         bijectors.append(tfb.Sigmoid())
 
         # f2: ẑ = Bernstein Polynomial
@@ -157,18 +154,15 @@ class BernsteinFlow(tfd.TransformedDistribution):
         )
         bijectors.append(f2)
 
-        # f3: z = a2(x)*ẑ - b2(x)
-        f3_shift = tfb.Shift(
-            -tf.math.reduce_min(theta) + 1E-5,
-            name=f'{name}_f3_shift'
+        # clip to valid range [min(theta), max(theta)]
+        bijectors.append(
+            tfb.Invert(
+                tfb.Sigmoid(
+                    high=tf.math.reduce_max(theta, axis=-1),
+                    low=tf.math.reduce_min(theta, axis=-1)
+                )
+            )
         )
-        bijectors.append(f3_shift)
-        f3_scale = tfb.Scale(
-            1 / (tf.math.reduce_max(theta) - tf.math.reduce_min(theta) - 1E-5),
-            name=f'{name}_f3_scale'
-        )
-        bijectors.append(f3_scale)
-        bijectors.append(tfb.Invert(tfb.Sigmoid()))
 
         bijectors = list(reversed(bijectors))
 
