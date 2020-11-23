@@ -5,7 +5,7 @@
 #
 # author  : Marcel Arpogaus
 # created : 2020-10-16 08:12:04
-# changed : 2020-11-22 19:43:04
+# changed : 2020-11-23 18:03:28
 # DESCRIPTION #################################################################
 #
 # This project is following the PEP8 style guide:
@@ -51,7 +51,6 @@ class BernsteinBijectorTest(tf.test.TestCase):
             x_shape))
 
         bb = BernsteinBijector(
-            order=order,
             theta=theta
         )
 

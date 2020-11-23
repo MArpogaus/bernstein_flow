@@ -5,7 +5,7 @@
 #
 # author  : Marcel Arpogaus
 # created : 2020-05-15 10:44:23
-# changed : 2020-11-23 12:35:46
+# changed : 2020-11-23 18:04:25
 # DESCRIPTION #################################################################
 #
 # This project is following the PEP8 style guide:
@@ -36,6 +36,9 @@ from tensorflow_probability import distributions as tfd
 
 from bernstein_flow.bijectors import BernsteinBijector
 
+from tensorflow_probability.python.internal import dtype_util
+from tensorflow_probability.python.internal import prefer_static
+from tensorflow_probability.python.internal import tensor_util
 from tensorflow_probability.python.internal import tensorshape_util
 
 
@@ -47,7 +50,8 @@ class BernsteinFlow(tfd.TransformedDistribution):
 
     def __init__(self,
                  pvector: tf.Tensor,
-                 distribution: tfd.Distribution = tfd.Normal(loc=0., scale=1.)
+                 distribution: tfd.Distribution = tfd.Normal(loc=0., scale=1.),
+                 name='BernsteinFlow'
                  ) -> tfd.Distribution:
         """
         Generate the flow for the given parameter vector. This would be
@@ -64,25 +68,32 @@ class BernsteinFlow(tfd.TransformedDistribution):
         :returns:   The transformed distribution (normalizing flow)
         :rtype:     Distribution
         """
-        if tensorshape_util.rank(pvector.shape) == 1:
-            self.order = pvector.shape[0] - 2
-            batch_shape = [1]
-        else:
-            self.order = pvector.shape[-1] - 2
-            batch_shape = pvector.shape[:-1] if pvector.shape[0] else None
+        with tf.name_scope(name) as name:
+            dtype = dtype_util.common_dtype([pvector], dtype_hint=tf.float32)
 
-        a1, b1, theta = self.slice_parameter_vectors(pvector)
+            pvector = tensor_util.convert_nonref_to_tensor(
+                pvector, dtype=dtype)
 
-        bijector = self.init_bijectors(
-            a1=tf.math.softplus(a1),
-            b1=b1,
-            theta=BernsteinBijector.constrain_theta(theta)
-        )
+            shape = prefer_static.shape(pvector)
+            self.bernstein_order = shape[-1]
+            if tensorshape_util.rank(pvector.shape) > 1:
+                batch_shape = shape[:-1]
+            else:
+                batch_shape = [1]
 
-        super().__init__(
-            distribution=tfd.Normal(loc=0., scale=1.),
-            bijector=bijector,
-            batch_shape=batch_shape)
+            a1, b1, theta = self.slice_parameter_vectors(pvector)
+
+            bijector = self.init_bijectors(
+                a1=tf.math.softplus(a1),
+                b1=b1,
+                theta=BernsteinBijector.constrain_theta(theta)
+            )
+
+            super().__init__(
+                distribution=tfd.Normal(loc=0., scale=1.),
+                bijector=bijector,
+                batch_shape=batch_shape,
+                name=name)
 
     def slice_parameter_vectors(self, pvector: tf.Tensor) -> list:
         """
@@ -94,7 +105,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
         :returns:   unpacked list of parameter vectors.
         :rtype:     list
         """
-        p_len = [1, 1, self.order]
+        p_len = [1, 1, self.bernstein_order]
 
         sliced_pvector = []
         for i in range(len(p_len)):
@@ -148,7 +159,6 @@ class BernsteinFlow(tfd.TransformedDistribution):
 
         # f2: ẑ = Bernstein Polynomial
         f2 = BernsteinBijector(
-            order=self.order,
             theta=theta,
             name=f'{name}_f2'
         )
