@@ -5,7 +5,7 @@
 #
 # author  : Marcel Arpogaus
 # created : 2020-05-15 10:44:23
-# changed : 2020-11-23 18:04:25
+# changed : 2020-11-25 17:04:36
 # DESCRIPTION #################################################################
 #
 # This project is following the PEP8 style guide:
@@ -180,8 +180,4 @@ class BernsteinFlow(tfd.TransformedDistribution):
 
     def _mean(self):
         x = self.distribution.mean()
-        return self.bijector.forward(x)
-
-    def _stddev(self):
-        x = self.distribution.stddev()
         return self.bijector.forward(x)

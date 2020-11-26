@@ -5,7 +5,7 @@
 #
 # author  : Marcel Arpogaus
 # created : 2020-09-11 14:14:24
-# changed : 2020-11-23 17:50:28
+# changed : 2020-11-26 11:27:26
 # DESCRIPTION #################################################################
 #
 # This project is following the PEP8 style guide:
@@ -111,10 +111,11 @@ class BernsteinBijector(tfb.Bijector):
         self.z_min = np.min(z_fit, axis=0)
         self.z_max = np.max(z_fit, axis=0)
 
-        ips = [I.interp1d(
+        ips = [I.make_interp_spline(
             x=np.squeeze(z_fit[..., i]),
             y=np.squeeze(y_fit),
-            kind='cubic',
+            k=3,
+            bc_type='natural',
             # assume_sorted=True
         ) for i in range(z_fit.shape[-1])]
 
@@ -194,7 +195,7 @@ class BernsteinBijector(tfb.Bijector):
     @classmethod
     def constrain_theta(cls: type,
                         theta_unconstrained: tf.Tensor,
-                        fn=tf.math.softplus) -> tf.Tensor:
+                        fn=tf.math.sigmoid) -> tf.Tensor:
         """
         Class method to calculate theta_1 = h_1, theta_k = theta_k-1 + exp(h_k)
 
@@ -210,8 +211,7 @@ class BernsteinBijector(tfb.Bijector):
         :rtype:     Tensor
         """
         d = tf.concat((tf.zeros_like(theta_unconstrained[..., :1]),
-                       theta_unconstrained[..., :1],
-                       fn(theta_unconstrained[..., 1:])), axis=-1)
+                       10 * fn(theta_unconstrained) + 1e-3), axis=-1)
         return tf.cumsum(d[..., 1:], axis=-1)
 
     def _is_increasing(self, **kwargs):
