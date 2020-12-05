@@ -5,7 +5,7 @@
 #
 # author  : Marcel Arpogaus
 # created : 2020-09-11 14:14:24
-# changed : 2020-11-26 11:27:26
+# changed : 2020-12-05 10:43:03
 # DESCRIPTION #################################################################
 #
 # This project is following the PEP8 style guide:
@@ -211,7 +211,7 @@ class BernsteinBijector(tfb.Bijector):
         :rtype:     Tensor
         """
         d = tf.concat((tf.zeros_like(theta_unconstrained[..., :1]),
-                       10 * fn(theta_unconstrained) + 1e-3), axis=-1)
+                       10 * fn(theta_unconstrained) + 1e-4), axis=-1)
         return tf.cumsum(d[..., 1:], axis=-1)
 
     def _is_increasing(self, **kwargs):
