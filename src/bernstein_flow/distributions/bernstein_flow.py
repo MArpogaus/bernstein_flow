@@ -5,7 +5,7 @@
 #
 # author  : Marcel Arpogaus
 # created : 2020-05-15 10:44:23
-# changed : 2020-11-25 17:04:36
+# changed : 2020-12-06 16:56:45
 # DESCRIPTION #################################################################
 #
 # This project is following the PEP8 style guide:
@@ -75,7 +75,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
                 pvector, dtype=dtype)
 
             shape = prefer_static.shape(pvector)
-            self.bernstein_order = shape[-1]
+            self.bernstein_order = shape[-1] - 2
             if tensorshape_util.rank(pvector.shape) > 1:
                 batch_shape = shape[:-1]
             else:
