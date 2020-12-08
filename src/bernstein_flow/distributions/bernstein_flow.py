@@ -5,7 +5,7 @@
 #
 # author  : Marcel Arpogaus
 # created : 2020-05-15 10:44:23
-# changed : 2020-12-06 16:56:45
+# changed : 2020-12-07 12:31:41
 # DESCRIPTION #################################################################
 #
 # This project is following the PEP8 style guide:
@@ -81,11 +81,11 @@ class BernsteinFlow(tfd.TransformedDistribution):
             else:
                 batch_shape = [1]
 
-            a1, b1, theta = self.slice_parameter_vectors(pvector)
+            a, b, theta = self.slice_parameter_vectors(pvector)
 
             bijector = self.init_bijectors(
-                a1=tf.math.softplus(a1),
-                b1=b1,
+                a=10 * tf.math.sigmoid(0.01 * a),
+                b=b,
                 theta=BernsteinBijector.constrain_theta(theta)
             )
 
@@ -112,28 +112,24 @@ class BernsteinFlow(tfd.TransformedDistribution):
             p = pvector[..., sum(p_len[:i]):sum(p_len[:i + 1])]
             sliced_pvector.append(tf.squeeze(p))
 
-        a1, b1, theta = sliced_pvector
+        a, b, theta = sliced_pvector
 
-        return a1, b1, theta
+        return a, b, theta
 
     def init_bijectors(self,
-                       a1: tf.Tensor,
-                       b1: tf.Tensor,
+                       a: tf.Tensor,
+                       b: tf.Tensor,
                        theta: tf.Tensor,
                        name: str = 'bernstein_flow') -> tfb.Bijector:
         """
         Builds a normalizing flow using a Bernstein polynomial as Bijector.
 
-        :param      a1:     The scale of f1.
-        :type       a1:     Tensor
-        :param      b1:     The shift of f1.
-        :type       b1:     Tensor
+        :param      a:     The scale of f1.
+        :type       a:     Tensor
+        :param      b:     The shift of f1.
+        :type       b:     Tensor
         :param      theta:  The Bernstein coefficients.
         :type       theta:  Tensor
-        :param      a2:     The scale of f3.
-        :type       a2:     Tensor
-        :param      b2:     The shift of f3.
-        :type       b2:     Tensor
         :param      name:   The name to give Ops created by the initializer.
         :type       name:   string
 
@@ -142,14 +138,14 @@ class BernsteinFlow(tfd.TransformedDistribution):
         """
         bijectors = []
 
-        # f1: ŷ = sigma(a1(x)*y - b1(x))
+        # f1: ŷ = sigma(a(x)*y - b(x))
         f1_scale = tfb.Scale(
-            a1,
+            a,
             name=f'{name}_f1_scale'
         )
         bijectors.append(f1_scale)
         f1_shift = tfb.Shift(
-            b1,
+            b,
             name=f'{name}_f1_shift'
         )
         bijectors.append(f1_shift)
