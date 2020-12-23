@@ -7,7 +7,7 @@
 
 # Bernstein-Polynomials as TensorFlow Probability Bijector
 
-This Repository contains a implementation of a normalizing flow for conditional density estimation using Bernstein polynomials, as proposed in:
+This Repository contains an implementation of a normalizing flow for conditional density estimation using Bernstein polynomials, as proposed in:
 
 > Sick Beate, Hothorn Torsten and Dürr Oliver, *Deep transformation models: Tackling complex regression problems with neural network based transformation models*, 2020. [online](http://arxiv.org/abs/2004.00464)
 
@@ -32,9 +32,9 @@ However, the shape of the data distribution in many real use cases is much more 
 
 The following example of a classical data set containing the waiting time between eruptions of the [Old Faithful Geyser](https://en.wikipedia.org/wiki/Old_Faithful) in [Yellowstone National Park](https://en.wikipedia.org/wiki/Yellowstone_National_Park) is used as an example.
 
-| Gaussian                                                     | Normalizing Flow                           |
-|:-------------------------------------------------------------|:-------------------------------------------|
-| ![gauss](gfx/gauss.png)                                      | ![flow](gfx/flow.png)                      |
+| Gaussian                        | Normalizing Flow              |
+|:--------------------------------|:------------------------------|
+| ![gauss](./ipynb/gfx/gauss.png) | ![flow](./ipynb/gfx/flow.png) |
 
 As shown in the left figure, the normality assumption is clearly violated by the bimodal nature of the data.
 However, the proposed transformation model has the flexibility to adapt to this complexity.
@@ -51,7 +51,7 @@ Pull and install it directly from git using pip:
 pip install git+https://github.com/MArpogaus/TensorFlow-Probability-Bernstein-Polynomial-Bijector.git
 ```
 
-Or clone this repository an install it from there:
+Or clone this repository and install it from there:
 
 ```bash
 git clone https://github.com/MArpogaus/TensorFlow-Probability-Bernstein-Polynomial-Bijector.git ./bernstein_flow

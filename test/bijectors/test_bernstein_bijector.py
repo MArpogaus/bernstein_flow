@@ -5,7 +5,7 @@
 #
 # author  : Marcel Arpogaus
 # created : 2020-10-16 08:12:04
-# changed : 2020-10-23 18:21:07
+# changed : 2020-11-23 18:03:28
 # DESCRIPTION #################################################################
 #
 # This project is following the PEP8 style guide:
@@ -32,68 +32,50 @@
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_probability import bijectors as tfb
-from tensorflow_probability import distributions as tfd
-
 from bernstein_flow.bijectors import BernsteinBijector
 
 
 class BernsteinBijectorTest(tf.test.TestCase):
 
-    def test_unbatched(self):
-        order = 9
+    def test_inverse(self,
+                     batch_shape=[],
+                     x_shape=[100],
+                     order=10):
         theta = BernsteinBijector.constrain_theta(
-            np.random.normal(0, 2, order).astype(np.float32)
+            np.ones(batch_shape + [order]).astype(np.float32)
         )
+        print(theta)
+        x = np.float32(np.random.uniform(
+            0 + 1E-2,
+            1 - 1E-2,
+            x_shape))
 
         bb = BernsteinBijector(
-            order=order,
             theta=theta
         )
 
-        x = np.linspace(0, 1, 10, dtype=np.float32)
-
         forward_x = bb.forward(x)
         # Use identity to invalidate cache.
-        inverse_y = bb.inverse(tf.identity(forward_x))
-        forward_inverse_y = bb.forward(inverse_y)
+        inverse_x = bb.inverse(tf.identity(forward_x))
+        forward_inverse_x = bb.forward(inverse_x)
 
         fldj = bb.forward_log_det_jacobian(x, event_ndims=1)
         # Use identity to invalidate cache.
         ildj = bb.inverse_log_det_jacobian(
             tf.identity(forward_x), event_ndims=1)
 
-        print(forward_x, inverse_y)
+        self.assertAllClose(x, inverse_x, rtol=1e-5, atol=1e-4)
+        self.assertAllClose(forward_x, forward_inverse_x, rtol=1e-5, atol=1e-4)
+        self.assertAllClose(ildj, -fldj, rtol=1e-5, atol=0.)
 
-        self.assertAllClose(x, inverse_y, rtol=1e-6, atol=1e-5)
-        self.assertAllClose(forward_x, forward_inverse_y, rtol=1e-6, atol=1e-5)
-        self.assertAllClose(ildj, -fldj, rtol=1e-6, atol=0.)
+    def test_inverse_batched(self):
+        self.test_inverse(batch_shape=[2],
+                          x_shape=[100, 2])
 
-    def test_batch(self, batch_size=5):
-        order = 9
+    def test_inverse_batched_multi(self):
+        self.test_inverse(batch_shape=[2, 4],
+                          x_shape=[100, 2, 4])
 
-        theta = BernsteinBijector.constrain_theta(
-            np.random.normal(0, 2, (batch_size, order)).astype(np.float32)
-        )
-
-        bb = BernsteinBijector(
-            order=order,
-            theta=theta
-        )
-
-        x = np.linspace(0, 1, 10, dtype=np.float32)[..., None]
-
-        forward_x = bb.forward(x)
-
-        # Use identity to invalidate cache.
-        inverse_y = bb.inverse(tf.identity(forward_x))
-        forward_inverse_y = bb.forward(inverse_y)
-
-        fldj = bb.forward_log_det_jacobian(x, event_ndims=1)
-        # Use identity to invalidate cache.
-        ildj = bb.inverse_log_det_jacobian(
-            tf.identity(forward_x), event_ndims=1)
-
-        self.assertAllClose(forward_x, forward_inverse_y, rtol=1e-3, atol=1e-2)
-        self.assertAllClose(x, inverse_y, rtol=1e-6, atol=1e-5)
-        self.assertAllClose(ildj, -fldj, rtol=1e-6, atol=0.)
+    def test_inverse_batched_multi_huge(self):
+        self.test_inverse(batch_shape=[16, 48],
+                          x_shape=[100, 16, 48])
