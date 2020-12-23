@@ -114,7 +114,7 @@ flow_model = tf.keras.Sequential()
 flow_model.add(InputLayer(input_shape = (1)))
 #Here could come a gigantus network
 flow_model.add(Dense(4 + 5)) # Bernstein coefficients and 2 times scale and shift
-flow_model.add(tfp.layers.DistributionLambda(BernsteinFlow(order=5)))
+flow_model.add(tfp.layers.DistributionLambda(BernsteinFlow))
 ```
 
 ## Examples
