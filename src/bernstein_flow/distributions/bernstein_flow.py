@@ -50,7 +50,6 @@ class BernsteinFlow(tfd.TransformedDistribution):
 
     def __init__(self,
                  pvector: tf.Tensor,
-                 distribution: tfd.Distribution = tfd.Normal(loc=0., scale=1.),
                  name='BernsteinFlow'
                  ) -> tfd.Distribution:
         """
@@ -62,8 +61,6 @@ class BernsteinFlow(tfd.TransformedDistribution):
 
         :param      pvector:       The paramter vector.
         :type       pvector:       Tensor
-        :param      distribution:  The base distribution to use.
-        :type       distribution:  Distribution
 
         :returns:   The transformed distribution (normalizing flow)
         :rtype:     Distribution
@@ -92,9 +89,8 @@ class BernsteinFlow(tfd.TransformedDistribution):
             )
 
             super().__init__(
-                distribution=tfd.Normal(loc=0., scale=1.),
+                distribution=tfd.Normal(loc=tf.zeros(batch_shape), scale=1.),
                 bijector=bijector,
-                batch_shape=batch_shape,
                 name=name)
 
     def slice_parameter_vectors(self, pvector: tf.Tensor) -> list:
