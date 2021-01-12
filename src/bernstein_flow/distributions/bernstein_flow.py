@@ -156,11 +156,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
 
         # clip to range [0, 1]
         bijectors.append(
-            tfb.SoftClip(
-                low=0,
-                high=1,
-                hinge_softness=1.5
-            )
+            tfb.Sigmoid()
         )
 
         # f2: ẑ = Bernstein Polynomial
@@ -170,16 +166,6 @@ class BernsteinFlow(tfd.TransformedDistribution):
         )
         bijectors.append(f2)
 
-        # clip to range [min(theta), max(theta)]
-        # bijectors.append(
-        #     tfb.Invert(
-        #         tfb.SoftClip(
-        #             high=tf.math.reduce_max(theta, axis=-1),
-        #             low=tf.math.reduce_min(theta, axis=-1),
-        #             hinge_softness=0.5
-        #         )
-        #     )
-        # )
         # f3: z = a2(x)*ẑ - b2(x)
         f3_scale = tfb.Scale(
             a2,
