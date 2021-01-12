@@ -99,11 +99,11 @@ class BernsteinBijector(tfb.Bijector):
         """
         Generates the Spline Interpolation.
         """
-        n_points = 100
+        n_points = 200
         rank = tensorshape_util.rank(self.batch_shape)
         shape = [...] + [tf.newaxis] * rank
 
-        y_fit = np.linspace(0, 1, n_points, dtype=np.float32)
+        y_fit = np.linspace(1e-5, 1-1e-5, n_points, dtype=np.float32)
 
         z_fit = self.forward(y_fit[tuple(shape)])
         z_fit = z_fit.numpy().reshape(n_points, -1)
@@ -111,12 +111,12 @@ class BernsteinBijector(tfb.Bijector):
         self.z_min = np.min(z_fit, axis=0)
         self.z_max = np.max(z_fit, axis=0)
 
-        ips = [I.make_interp_spline(
+        ips = [I.interp1d(
             x=np.squeeze(z_fit[..., i]),
             y=np.squeeze(y_fit),
-            k=3,
-            bc_type='natural',
-            # assume_sorted=True
+            kind='cubic',
+            # bc_type='natural',
+            assume_sorted=True
         ) for i in range(z_fit.shape[-1])]
 
         def ifn(z):
@@ -195,7 +195,7 @@ class BernsteinBijector(tfb.Bijector):
     @classmethod
     def constrain_theta(cls: type,
                         theta_unconstrained: tf.Tensor,
-                        fn=tf.math.sigmoid) -> tf.Tensor:
+                        fn=tf.math.softplus) -> tf.Tensor:
         """
         Class method to calculate theta_1 = h_1, theta_k = theta_k-1 + exp(h_k)
 
@@ -212,7 +212,7 @@ class BernsteinBijector(tfb.Bijector):
         """
         d = tf.concat((tf.zeros_like(theta_unconstrained[..., :1]),
                        theta_unconstrained[..., :1],
-                       10 * fn(0.1 * theta_unconstrained) + 1e-4), axis=-1)
+                       fn(theta_unconstrained[..., 1:]) + 1e-4), axis=-1)
         return tf.cumsum(d[..., 1:], axis=-1)
 
     def _is_increasing(self, **kwargs):

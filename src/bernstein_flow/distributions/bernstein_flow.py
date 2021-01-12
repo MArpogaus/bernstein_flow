@@ -50,7 +50,6 @@ class BernsteinFlow(tfd.TransformedDistribution):
 
     def __init__(self,
                  pvector: tf.Tensor,
-                 distribution: tfd.Distribution = tfd.Normal(loc=0., scale=1.),
                  name='BernsteinFlow'
                  ) -> tfd.Distribution:
         """
@@ -62,8 +61,6 @@ class BernsteinFlow(tfd.TransformedDistribution):
 
         :param      pvector:       The paramter vector.
         :type       pvector:       Tensor
-        :param      distribution:  The base distribution to use.
-        :type       distribution:  Distribution
 
         :returns:   The transformed distribution (normalizing flow)
         :rtype:     Distribution
@@ -75,24 +72,25 @@ class BernsteinFlow(tfd.TransformedDistribution):
                 pvector, dtype=dtype)
 
             shape = prefer_static.shape(pvector)
-            self.bernstein_order = shape[-1] - 2
+            self.bernstein_order = shape[-1] - 4
             if tensorshape_util.rank(pvector.shape) > 1:
                 batch_shape = shape[:-1]
             else:
                 batch_shape = [1]
 
-            a, b, theta = self.slice_parameter_vectors(pvector)
+            a1, b1, theta, a2, b2 = self.slice_parameter_vectors(pvector)
 
             bijector = self.init_bijectors(
-                a=10 * tf.math.sigmoid(0.01 * a),
-                b=b,
-                theta=BernsteinBijector.constrain_theta(theta)
+                a1=tf.math.softplus(a1),
+                b1=b1,
+                theta=BernsteinBijector.constrain_theta(theta),
+                a2=tf.math.softplus(a2),
+                b2=b2
             )
 
             super().__init__(
-                distribution=tfd.Normal(loc=0., scale=1.),
+                distribution=tfd.Normal(loc=tf.zeros(batch_shape), scale=1.),
                 bijector=bijector,
-                batch_shape=batch_shape,
                 name=name)
 
     def slice_parameter_vectors(self, pvector: tf.Tensor) -> list:
@@ -105,31 +103,37 @@ class BernsteinFlow(tfd.TransformedDistribution):
         :returns:   unpacked list of parameter vectors.
         :rtype:     list
         """
-        p_len = [1, 1, self.bernstein_order]
+        p_len = [1, 1, self.bernstein_order, 1, 1]
 
         sliced_pvector = []
         for i in range(len(p_len)):
             p = pvector[..., sum(p_len[:i]):sum(p_len[:i + 1])]
             sliced_pvector.append(tf.squeeze(p))
 
-        a, b, theta = sliced_pvector
+        a1, b1, theta, a2, b2 = sliced_pvector
 
-        return a, b, theta
+        return a1, b1, theta, a2, b2
 
     def init_bijectors(self,
-                       a: tf.Tensor,
-                       b: tf.Tensor,
+                       a1: tf.Tensor,
+                       b1: tf.Tensor,
                        theta: tf.Tensor,
+                       a2: tf.Tensor,
+                       b2: tf.Tensor,
                        name: str = 'bernstein_flow') -> tfb.Bijector:
         """
         Builds a normalizing flow using a Bernstein polynomial as Bijector.
 
-        :param      a:     The scale of f1.
-        :type       a:     Tensor
-        :param      b:     The shift of f1.
-        :type       b:     Tensor
+        :param      a1:     The scale of f1.
+        :type       a1:     Tensor
+        :param      b1:     The shift of f1.
+        :type       b1:     Tensor
         :param      theta:  The Bernstein coefficients.
         :type       theta:  Tensor
+        :param      a2:     The scale of f3.
+        :type       a2:     Tensor
+        :param      b2:     The shift of f3.
+        :type       b2:     Tensor
         :param      name:   The name to give Ops created by the initializer.
         :type       name:   string
 
@@ -138,42 +142,60 @@ class BernsteinFlow(tfd.TransformedDistribution):
         """
         bijectors = []
 
-        # f1: ŷ = sigma(a(x)*y - b(x))
+        # f1: ŷ = sigma(a1(x)*y - b1(x))
         f1_scale = tfb.Scale(
-            a,
-            name=f'{name}_f1_scale'
+            a1,
+            name='f1_scale'
         )
         bijectors.append(f1_scale)
         f1_shift = tfb.Shift(
-            b,
-            name=f'{name}_f1_shift'
+            b1,
+            name='f1_shift'
         )
         bijectors.append(f1_shift)
 
-        # clip to valid range [0,1]
-        bijectors.append(tfb.Sigmoid())
+        # clip to range [0, 1]
+        bijectors.append(
+            tfb.SoftClip(
+                low=0,
+                high=1,
+                hinge_softness=1.5
+            )
+        )
 
         # f2: ẑ = Bernstein Polynomial
         f2 = BernsteinBijector(
             theta=theta,
-            name=f'{name}_f2'
+            name='f2'
         )
         bijectors.append(f2)
 
-        # clip to valid range [min(theta), max(theta)]
-        bijectors.append(
-            tfb.Invert(
-                tfb.Sigmoid(
-                    high=tf.math.reduce_max(theta, axis=-1),
-                    low=tf.math.reduce_min(theta, axis=-1)
-                )
-            )
+        # clip to range [min(theta), max(theta)]
+        # bijectors.append(
+        #     tfb.Invert(
+        #         tfb.SoftClip(
+        #             high=tf.math.reduce_max(theta, axis=-1),
+        #             low=tf.math.reduce_min(theta, axis=-1),
+        #             hinge_softness=0.5
+        #         )
+        #     )
+        # )
+        # f3: z = a2(x)*ẑ - b2(x)
+        f3_scale = tfb.Scale(
+            a2,
+            name='f3_scale'
         )
+        bijectors.append(f3_scale)
+        f3_shift = tfb.Shift(
+            b2,
+            name='f3_shift'
+        )
+        bijectors.append(f3_shift)
 
         bijectors = list(reversed(bijectors))
 
         return tfb.Invert(tfb.Chain(bijectors))
 
     def _mean(self):
-        x = self.distribution.mean()
-        return self.bijector.forward(x)
+        samples = self.sample(10000)
+        return tf.math.reduce_mean(samples, axis=0)

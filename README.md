@@ -7,17 +7,20 @@
 
 # Bernstein-Polynomials as TensorFlow Probability Bijector
 
-This Repository contains a implementation of a normalizing flow for conditional density estimation using Bernstein polynomials, as proposed in [4].
+This Repository contains an implementation of a normalizing flow for conditional density estimation using Bernstein polynomials, as proposed in:
+
+> Sick Beate, Hothorn Torsten and Dürr Oliver, *Deep transformation models: Tackling complex regression problems with neural network based transformation models*, 2020. [online](http://arxiv.org/abs/2004.00464)
+
 The [`tfp.Bijector`][bijector] interface is used for the implementation to benefit from the powerful [TensorFlow Probability][tensorflow-probability] framework.
 
 <!-- MarkdownTOC levels=2 -->
 
 - [The Need for Flexible Distributions](#the-need-for-flexible-distributions)
+- [Getting Started](#getting-started)
 - [Usage](#usage)
 - [Examples](#examples)
 - [Contributing](#contributing)
 - [License](#license)
-- [References](#references)
 
 <!-- /MarkdownTOC -->
 
@@ -29,14 +32,14 @@ However, the shape of the data distribution in many real use cases is much more 
 
 The following example of a classical data set containing the waiting time between eruptions of the [Old Faithful Geyser](https://en.wikipedia.org/wiki/Old_Faithful) in [Yellowstone National Park](https://en.wikipedia.org/wiki/Yellowstone_National_Park) is used as an example.
 
-| Gaussian                                                     | Normalizing Flow                           |
-|:-------------------------------------------------------------|:-------------------------------------------|
-| ![gauss](gfx/gauss.png)                                      | ![flow](gfx/flow.png)                      |
+| Gaussian                        | Normalizing Flow              |
+|:--------------------------------|:------------------------------|
+| ![gauss](./ipynb/gfx/gauss.png) | ![flow](./ipynb/gfx/flow.png) |
 
 As shown in the left figure, the normality assumption is clearly violated by the bimodal nature of the data.
 However, the proposed transformation model has the flexibility to adapt to this complexity.
 
-### Getting Started
+## Getting Started
 
 To start using my code follow these simple steps.
 
@@ -48,7 +51,7 @@ Pull and install it directly from git using pip:
 pip install git+https://github.com/MArpogaus/TensorFlow-Probability-Bernstein-Polynomial-Bijector.git
 ```
 
-Or clone this repository an install it from there:
+Or clone this repository and install it from there:
 
 ```bash
 git clone https://github.com/MArpogaus/TensorFlow-Probability-Bernstein-Polynomial-Bijector.git ./bernstein_flow
@@ -58,8 +61,8 @@ pip install -e .
 
 ### Prerequisites
 
-Pip should handle take care of installing the required dependencies on its own.
-For completeness, these are the packages used by the implementation:
+Pip should take care of installing the required dependencies on its own.
+For completeness, these are the packages used in the implementation:
 
  * [`matplotlib`][matplotlib]
  * [`numpy`][numpy]
@@ -111,27 +114,15 @@ flow_model = tf.keras.Sequential()
 flow_model.add(InputLayer(input_shape = (1)))
 #Here could come a gigantus network
 flow_model.add(Dense(4 + 5)) # Bernstein coefficients and 2 times scale and shift
-flow_model.add(tfp.layers.DistributionLambda(BernsteinFlow(order=5)))
+flow_model.add(tfp.layers.DistributionLambda(BernsteinFlow))
 ```
 
 ## Examples
 
-You can find more examples in the `ipynb` directory.
+You can find two examples in the `ipynb` directory:
 
-The following illustration shows a conditioned normalizing flow model, transforming a complex conditioned distribution step by step to a simple Gaussian distribution, conditioned on some value *x*. The visualization was inspired by [17].
-
-![](gfx/conditioned_normalizing_flow.svg)
-
-### Deep Transformation Model 
-
-A recent work [4] presented a new type of flow-based transformation models especially optimized for CDE. In that work 
-ideas from statistical transformation models [3] and deep normalizing flows [1] are joined. These *deep normalizing flows* outperform existing models for complex distributions far away from Gaussian. Compared to the statistical transformation models the proposed deep transformation model does not require predefined features and can be trained in an end-to-end fashion from complex data. The very expressive Bernstein polynomials are used as basis transformations [3] combined in a composition of four different transformation functions to build a NF.
-
-A neural network was trained to learn the mapping from the input *x* to the parameters which are then used to parametrize the transformer functions in the flow.
-
-![](gfx/conditioned_normalizing_flow_network.svg)
-
-This way each input *x* yields a different parametrization of the flow and thus results in a different transformation, hence a different conditioned distribution *p_y(y|x)*.
+ * `TheoreticalBackground.ipynb`: Some explanation of the theoretical fundamentals
+ * `Gaussian_vs_Transformation_Model.ipynb`: Bimodal data example shown in the figures above.
 
 ## Contributing
 
@@ -148,20 +139,6 @@ Any contributions are **greatly appreciated**.
 ## License
 
 Distributed under the [Apache License 2.0](LICENSE)
-
-## References
-
-[1] Tabak E. G. and Turner Cristina V., *A Family of Nonparametric Density Estimation Algorithms*, vol. 66, number 2, pp. 145--164, 2013. [online](https://onlinelibrary.wiley.com/doi/abs/10.1002/cpa.21423)
-
-[2] Papamakarios George, Nalisnick Eric, Rezende Danilo Jimenez _et al._, *Normalizing Flows for Probabilistic Modeling and Inference*, 2019. [online](http://arxiv.org/abs/1912.02762)
-
-[3] Hothorn Torsten, Möst Lisa and Bühlmann Peter, *Most Likely Transformations*, vol. 45, number 1, pp. 110--134, 2018. [online](https://onlinelibrary.wiley.com/doi/abs/10.1111/sjos.12291)
-
-[4] Sick Beate, Hothorn Torsten and Dürr Oliver, *Deep transformation models: Tackling complex regression problems with neural network based transformation models*, 2020. [online](http://arxiv.org/abs/2004.00464)
-
-[5] Farouki Rida T., *The Bernstein polynomial basis: A centennial retrospective*, vol. 29, number 6, pp. 379--419, 2012. [online](https://doi.org/10.1016/j.cagd.2012.03.001)
-
-[6] Weng Lilian, *Flow-based deep generative models*, 2018. [online](http://lilianweng.github.io/lil-log/2018/10/13/flow-based-deep-generative-models.html)
 
 [contributors-shield]: https://img.shields.io/github/contributors/MArpogaus/TensorFlow-Probability-Bernstein-Polynomial-Bijector.svg?style=flat-square
 [contributors-url]: https://github.com/MArpogaus/TensorFlow-Probability-Bernstein-Polynomial-Bijector/graphs/contributors
