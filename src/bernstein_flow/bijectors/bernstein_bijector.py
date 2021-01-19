@@ -175,7 +175,7 @@ class BernsteinBijector(tfb.Bijector):
         sample_shape = prefer_static.shape(y)
         y = y[..., tf.newaxis]
 
-        y = tf.clip_by_value(y, 0, 1.0)
+        y = tf.clip_by_value(y, 1e-5, 1.0 - 1e-5)
         by = self.beta_dist_h.prob(y)
         z = tf.reduce_mean(by * self.theta, axis=-1)
 
@@ -185,7 +185,7 @@ class BernsteinBijector(tfb.Bijector):
         sample_shape = prefer_static.shape(y)
         y = y[..., tf.newaxis]
 
-        y = tf.clip_by_value(y, 0, 1.0)
+        y = tf.clip_by_value(y, 1e-5, 1.0 - 1e-5)
         by = self.beta_dist_h_dash.prob(y)
         dtheta = self.theta[..., 1:] - self.theta[..., 0:-1]
         ldj = tf.math.log(tf.reduce_sum(by * dtheta, axis=-1))
@@ -212,7 +212,7 @@ class BernsteinBijector(tfb.Bijector):
         """
         d = tf.concat((tf.zeros_like(theta_unconstrained[..., :1]),
                        theta_unconstrained[..., :1],
-                       fn(theta_unconstrained[..., 1:]) + 1e-4), axis=-1)
+                       fn(theta_unconstrained[..., 1:]) + 1e-3), axis=-1)
         return tf.cumsum(d[..., 1:], axis=-1)
 
     def _is_increasing(self, **kwargs):
