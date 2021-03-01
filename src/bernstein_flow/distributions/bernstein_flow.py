@@ -48,10 +48,16 @@ class BernsteinFlow(tfd.TransformedDistribution):
     polynomials as the bijector.
     """
 
-    def __init__(self,
-                 pvector: tf.Tensor,
-                 name='BernsteinFlow'
-                 ) -> tfd.Distribution:
+    def __init__(
+        self,
+        pvector: tf.Tensor,
+        bb_class=BernsteinBijector,
+        first_affine_trafo=True,
+        second_affine_trafo=True,
+        softclip=False,
+        hinge_softness=1e-30,
+        name="BernsteinFlow",
+    ) -> tfd.Distribution:
         """
         Generate the flow for the given parameter vector. This would be
         typically the output of a neural network.
@@ -68,32 +74,44 @@ class BernsteinFlow(tfd.TransformedDistribution):
         with tf.name_scope(name) as name:
             dtype = dtype_util.common_dtype([pvector], dtype_hint=tf.float32)
 
-            pvector = tensor_util.convert_nonref_to_tensor(
-                pvector, dtype=dtype)
+            pvector = tensor_util.convert_nonref_to_tensor(pvector, dtype=dtype)
 
             shape = prefer_static.shape(pvector)
-            self.bernstein_order = shape[-1] - 4
+
+            p_len = []
+            self.bernstein_order = shape[-1]
+            if first_affine_trafo:
+                self.bernstein_order -= 2
+                p_len += [1, 1]
+            if second_affine_trafo:
+                p_len += [1, 1]
+                self.bernstein_order -= 2
+
+            p_len.insert(2, self.bernstein_order)
+
             if tensorshape_util.rank(pvector.shape) > 1:
                 batch_shape = shape[:-1]
             else:
                 batch_shape = [1]
 
-            a1, b1, theta, a2, b2 = self.slice_parameter_vectors(pvector)
+            pv = self.slice_parameter_vectors(pvector, p_len)
 
             bijector = self.init_bijectors(
-                a1=tf.math.softplus(a1),
-                b1=b1,
-                theta=BernsteinBijector.constrain_theta(theta),
-                a2=tf.math.softplus(a2),
-                b2=b2
+                pv,
+                bb_class=bb_class,
+                first_affine_trafo=first_affine_trafo,
+                second_affine_trafo=second_affine_trafo,
+                softclip=softclip,
+                hinge_softness=hinge_softness,
             )
 
             super().__init__(
-                distribution=tfd.Normal(loc=tf.zeros(batch_shape), scale=1.),
+                distribution=tfd.Normal(loc=tf.zeros(batch_shape), scale=1.0),
                 bijector=bijector,
-                name=name)
+                name=name,
+            )
 
-    def slice_parameter_vectors(self, pvector: tf.Tensor) -> list:
+    def slice_parameter_vectors(self, pvector: tf.Tensor, p_len) -> list:
         """
         Returns an unpacked list of parameter vectors.
 
@@ -103,24 +121,23 @@ class BernsteinFlow(tfd.TransformedDistribution):
         :returns:   unpacked list of parameter vectors.
         :rtype:     list
         """
-        p_len = [1, 1, self.bernstein_order, 1, 1]
-
         sliced_pvector = []
         for i in range(len(p_len)):
-            p = pvector[..., sum(p_len[:i]):sum(p_len[:i + 1])]
+            p = pvector[..., sum(p_len[:i]) : sum(p_len[: i + 1])]
             sliced_pvector.append(tf.squeeze(p))
 
-        a1, b1, theta, a2, b2 = sliced_pvector
+        return sliced_pvector
 
-        return a1, b1, theta, a2, b2
-
-    def init_bijectors(self,
-                       a1: tf.Tensor,
-                       b1: tf.Tensor,
-                       theta: tf.Tensor,
-                       a2: tf.Tensor,
-                       b2: tf.Tensor,
-                       name: str = 'bernstein_flow') -> tfb.Bijector:
+    def init_bijectors(
+        self,
+        pv,
+        bb_class,
+        first_affine_trafo,
+        second_affine_trafo,
+        softclip,
+        hinge_softness,
+        name: str = "bernstein_flow",
+    ) -> tfb.Bijector:
         """
         Builds a normalizing flow using a Bernstein polynomial as Bijector.
 
@@ -142,41 +159,49 @@ class BernsteinFlow(tfd.TransformedDistribution):
         """
         bijectors = []
 
+        if first_affine_trafo and second_affine_trafo:
+            a1, b1, theta, a2, b2 = pv
+        elif first_affine_trafo and not second_affine_trafo:
+            a1, b1, theta = pv
+        elif not first_affine_trafo and second_affine_trafo:
+            theta, a2, b2 = pv
+        else:
+            theta = pv[0]
+
+        theta = bb_class.constrain_theta(theta)
+
         # f1: ŷ = sigma(a1(x)*y - b1(x))
-        f1_scale = tfb.Scale(
-            a1,
-            name='f1_scale'
-        )
-        bijectors.append(f1_scale)
-        f1_shift = tfb.Shift(
-            b1,
-            name='f1_shift'
-        )
-        bijectors.append(f1_shift)
+        if first_affine_trafo:
+            f1_scale = tfb.Scale(tf.math.softplus(a1), name="f1_scale")
+            bijectors.append(f1_scale)
+            f1_shift = tfb.Shift(b1, name="f1_shift")
+            bijectors.append(f1_shift)
 
         # clip to range [0, 1]
-        bijectors.append(
-            tfb.Sigmoid()
-        )
+        bijectors.append(tfb.Sigmoid())
 
         # f2: ẑ = Bernstein Polynomial
-        f2 = BernsteinBijector(
-            theta=theta,
-            name='f2'
-        )
+        f2 = bb_class(theta=theta, name="f2")
         bijectors.append(f2)
 
+        # clip to valid range [min(theta), max(theta)]
+        if softclip:
+            bijectors.append(
+                tfb.Invert(
+                    tfb.SoftClip(
+                        high=tf.math.reduce_max(theta, axis=-1),
+                        low=tf.math.reduce_min(theta, axis=-1),
+                        hinge_softness=hinge_softness,
+                    )
+                )
+            )
+
         # f3: z = a2(x)*ẑ - b2(x)
-        f3_scale = tfb.Scale(
-            a2,
-            name='f3_scale'
-        )
-        bijectors.append(f3_scale)
-        f3_shift = tfb.Shift(
-            b2,
-            name='f3_shift'
-        )
-        bijectors.append(f3_shift)
+        if second_affine_trafo:
+            f3_scale = tfb.Scale(tf.math.softplus(a2), name="f3_scale")
+            bijectors.append(f3_scale)
+            f3_shift = tfb.Shift(b2, name="f3_shift")
+            bijectors.append(f3_shift)
 
         bijectors = list(reversed(bijectors))
 
