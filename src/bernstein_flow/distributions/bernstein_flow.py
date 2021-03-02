@@ -53,9 +53,9 @@ class BernsteinFlow(tfd.TransformedDistribution):
         pvector: tf.Tensor,
         bb_class=BernsteinBijector,
         first_affine_trafo=True,
-        second_affine_trafo=True,
+        scale_base_distribution=True,
         softclip=False,
-        hinge_softness=1e-30,
+        hinge_softness=1e-15,
         name="BernsteinFlow",
     ) -> tfd.Distribution:
         """
@@ -83,9 +83,9 @@ class BernsteinFlow(tfd.TransformedDistribution):
             if first_affine_trafo:
                 self.bernstein_order -= 2
                 p_len += [1, 1]
-            if second_affine_trafo:
-                p_len += [1, 1]
-                self.bernstein_order -= 2
+            if scale_base_distribution:
+                p_len += [1]
+                self.bernstein_order -= 1
 
             p_len.insert(2, self.bernstein_order)
 
@@ -100,7 +100,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
                 pv,
                 bb_class=bb_class,
                 first_affine_trafo=first_affine_trafo,
-                second_affine_trafo=second_affine_trafo,
+                scale_base_distribution=scale_base_distribution,
                 softclip=softclip,
                 hinge_softness=hinge_softness,
             )
@@ -133,7 +133,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
         pv,
         bb_class,
         first_affine_trafo,
-        second_affine_trafo,
+        scale_base_distribution,
         softclip,
         hinge_softness,
         name: str = "bernstein_flow",
@@ -159,16 +159,24 @@ class BernsteinFlow(tfd.TransformedDistribution):
         """
         bijectors = []
 
-        if first_affine_trafo and second_affine_trafo:
-            a1, b1, theta, a2, b2 = pv
-        elif first_affine_trafo and not second_affine_trafo:
+        if first_affine_trafo and scale_base_distribution:
+            a1, b1, theta, a2 = pv
+        elif first_affine_trafo and not scale_base_distribution:
             a1, b1, theta = pv
-        elif not first_affine_trafo and second_affine_trafo:
-            theta, a2, b2 = pv
+        elif not first_affine_trafo and scale_base_distribution:
+            theta, a2 = pv
         else:
             theta = pv[0]
 
-        theta = bb_class.constrain_theta(theta)
+        if scale_base_distribution:
+            scale = tf.math.softplus(a2)[..., None]
+        else:
+            scale = 1.0
+
+        low_bound = -6 * scale
+        high_bound = 6 * scale
+
+        theta = bb_class.constrain_theta(theta, low=low_bound, high=high_bound)
 
         # f1: ŷ = sigma(a1(x)*y - b1(x))
         if first_affine_trafo:
@@ -197,11 +205,11 @@ class BernsteinFlow(tfd.TransformedDistribution):
             )
 
         # f3: z = a2(x)*ẑ - b2(x)
-        if second_affine_trafo:
+        if scale_base_distribution:
             f3_scale = tfb.Scale(tf.math.softplus(a2), name="f3_scale")
             bijectors.append(f3_scale)
-            f3_shift = tfb.Shift(b2, name="f3_shift")
-            bijectors.append(f3_shift)
+            # f3_shift = tfb.Shift(b2, name="f3_shift")
+            # bijectors.append(f3_shift)
 
         bijectors = list(reversed(bijectors))
 
