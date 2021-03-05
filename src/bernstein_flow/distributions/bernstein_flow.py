@@ -53,8 +53,8 @@ class BernsteinFlow(tfd.TransformedDistribution):
         pvector: tf.Tensor,
         bb_class=BernsteinBijector,
         first_affine_trafo=True,
-        scale_base_distribution=True,
-        softclip=False,
+        scale_base_distribution=False,
+        clip_domain=4,
         hinge_softness=1e-15,
         name="BernsteinFlow",
     ) -> tfd.Distribution:
@@ -101,7 +101,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
                 bb_class=bb_class,
                 first_affine_trafo=first_affine_trafo,
                 scale_base_distribution=scale_base_distribution,
-                softclip=softclip,
+                clip_domain=clip_domain,
                 hinge_softness=hinge_softness,
             )
 
@@ -134,7 +134,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
         bb_class,
         first_affine_trafo,
         scale_base_distribution,
-        softclip,
+        clip_domain,
         hinge_softness,
         name: str = "bernstein_flow",
     ) -> tfb.Bijector:
@@ -173,8 +173,8 @@ class BernsteinFlow(tfd.TransformedDistribution):
         else:
             scale = 1.0
 
-        low_bound = -6 * scale
-        high_bound = 6 * scale
+        low_bound = -clip_domain * scale
+        high_bound = clip_domain * scale
 
         theta = bb_class.constrain_theta(theta, low=low_bound, high=high_bound)
 
@@ -193,23 +193,20 @@ class BernsteinFlow(tfd.TransformedDistribution):
         bijectors.append(f2)
 
         # clip to valid range [min(theta), max(theta)]
-        if softclip:
-            bijectors.append(
-                tfb.Invert(
-                    tfb.SoftClip(
-                        high=tf.math.reduce_max(theta, axis=-1),
-                        low=tf.math.reduce_min(theta, axis=-1),
-                        hinge_softness=hinge_softness,
-                    )
+        bijectors.append(
+            tfb.Invert(
+                tfb.SoftClip(
+                    high=tf.math.reduce_max(theta, axis=-1),
+                    low=tf.math.reduce_min(theta, axis=-1),
+                    hinge_softness=hinge_softness,
                 )
             )
+        )
 
         # f3: z = a2(x)*ẑ - b2(x)
         if scale_base_distribution:
             f3_scale = tfb.Scale(tf.math.softplus(a2), name="f3_scale")
             bijectors.append(f3_scale)
-            # f3_shift = tfb.Shift(b2, name="f3_shift")
-            # bijectors.append(f3_shift)
 
         bijectors = list(reversed(bijectors))
 

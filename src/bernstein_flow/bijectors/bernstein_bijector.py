@@ -103,11 +103,11 @@ class BernsteinBijector(tfb.Bijector):
         """
         Generates the Spline Interpolation.
         """
-        n_points = 200
+        n_points = 400
         rank = tensorshape_util.rank(self.batch_shape)
         shape = [...] + [tf.newaxis] * rank
 
-        y_fit = np.linspace(1e-5, 1 - 1e-5, n_points, dtype=np.float32)
+        y_fit = np.linspace(0, 1, n_points, dtype=np.float32)
 
         z_fit = self.forward(y_fit[tuple(shape)])
         z_fit = z_fit.numpy().reshape(n_points, -1)
@@ -181,7 +181,7 @@ class BernsteinBijector(tfb.Bijector):
         sample_shape = prefer_static.shape(y)
         y = y[..., tf.newaxis]
 
-        y = tf.clip_by_value(y, 1e-5, 1.0 - 1e-5)
+        y = tf.clip_by_value(y, 0.0, 1.0)
         by = self.beta_dist_h.prob(y)
         z = tf.reduce_mean(by * self.theta, axis=-1)
 
@@ -191,7 +191,7 @@ class BernsteinBijector(tfb.Bijector):
         sample_shape = prefer_static.shape(y)
         y = y[..., tf.newaxis]
 
-        y = tf.clip_by_value(y, 1e-5, 1.0 - 1e-5)
+        y = tf.clip_by_value(y, 0.0, 1.0)
         by = self.beta_dist_h_dash.prob(y)
         dtheta = self.theta[..., 1:] - self.theta[..., 0:-1]
         ldj = tf.math.log(tf.reduce_sum(by * dtheta, axis=-1))
@@ -220,7 +220,7 @@ class BernsteinBijector(tfb.Bijector):
             (
                 tf.zeros_like(theta_unconstrained[..., :1]),
                 theta_unconstrained[..., :1],
-                fn(theta_unconstrained[..., 1:]) + 1e-3,
+                fn(theta_unconstrained[..., 1:]) + 1e-15,
             ),
             axis=-1,
         )
