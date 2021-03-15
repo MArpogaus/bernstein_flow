@@ -219,8 +219,7 @@ class BernsteinBijector(tfb.Bijector):
         d = tf.concat(
             (
                 tf.zeros_like(theta_unconstrained[..., :1]),
-                theta_unconstrained[..., :1],
-                fn(theta_unconstrained[..., 1:]) + 1e-15,
+                fn(theta_unconstrained) + 0.1,
             ),
             axis=-1,
         )

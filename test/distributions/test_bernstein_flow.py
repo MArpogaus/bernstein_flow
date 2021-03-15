@@ -38,32 +38,14 @@ from bernstein_flow.distributions import BernsteinFlow
 
 
 class BernsteinFlowTest(tf.test.TestCase):
-
-    def gen_sequential_model(
-            self,
-            output_shape,
-            distribution_lambda):
-        # Create a trainable distribution using the Sequential API.
-        model = tf.keras.models.Sequential([
-            tf.keras.layers.InputLayer(input_shape=(1,), dtype=tf.float32),
-            # The Dense serves no real purpose; it will change the event_shape.
-            tf.keras.layers.Dense(tf.math.reduce_prod(
-                output_shape), use_bias=False),
-            tf.keras.layers.Reshape(output_shape),
-            tfp.layers.DistributionLambda(distribution_lambda)
-        ])
-        model.summary()
-        return model
-
     def gen_dist(self, batch_shape):
         order = 5
         if batch_shape != []:
-            n = tfd.Normal(loc=tf.zeros((batch_shape)),
-                           scale=tf.ones((batch_shape)))
-            bs = BernsteinFlow(tf.ones(batch_shape + [4 + order]))
+            n = tfd.Normal(loc=tf.zeros((batch_shape)), scale=tf.ones((batch_shape)))
+            bs = BernsteinFlow(tf.ones(batch_shape + [3 + order]))
         else:
             n = tfd.Normal(loc=tf.zeros((1)), scale=tf.ones((1)))
-            bs = BernsteinFlow(tf.ones((4 + order)))
+            bs = BernsteinFlow(tf.ones((3 + order)))
         return n, bs
 
     def test_dist(self, batch_shape=[]):
@@ -77,13 +59,27 @@ class BernsteinFlowTest(tf.test.TestCase):
             self.assertIsInstance(trans_dist, tfd.TransformedDistribution)
             self.assertEqual(normal_dist.batch_shape, trans_dist.batch_shape)
             self.assertEqual(normal_dist.event_shape, trans_dist.event_shape)
-            self.assertEqual(normal_dist.sample(input_shape).shape,
-                             trans_dist.sample(input_shape).shape)
-            self.assertEqual(normal_dist.prob(tf.zeros(input_shape)).shape,
-                             trans_dist.prob(tf.zeros(input_shape)).shape)
+            self.assertEqual(
+                normal_dist.sample(input_shape).shape,
+                trans_dist.sample(input_shape).shape,
+            )
+            self.assertEqual(
+                normal_dist.prob(tf.zeros(input_shape)).shape,
+                trans_dist.prob(tf.zeros(input_shape)).shape,
+            )
 
     def test_dist_batch(self):
         self.test_dist(batch_shape=[32])
 
     def test_dist_multi(self):
         self.test_dist(batch_shape=[32, 48])
+
+    def test_small_numbers(self):
+        x = tf.linspace(-100.0, 100.0, 10000)
+        for o in [5, 20, 2000]:
+            bf = BernsteinFlow(
+                [1, 1] + 2 * [-1000] + (o - 4) * [1] + 2 * [-1000] + [1],
+            )
+
+            self.assertAllInRange(bf.prob(x), bf.dtype.min, bf.dtype.max)
+            self.assertAllInRange(bf.sample(100000), bf.dtype.min, bf.dtype.max)

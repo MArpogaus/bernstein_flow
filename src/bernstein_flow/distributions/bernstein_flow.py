@@ -51,11 +51,10 @@ class BernsteinFlow(tfd.TransformedDistribution):
     def __init__(
         self,
         pvector: tf.Tensor,
-        bb_class=BernsteinBijector,
-        first_affine_trafo=True,
-        scale_base_distribution=False,
-        clip_domain=4,
-        hinge_softness=1e-15,
+        max_dist_scale=10,
+        scale_base_distribution=True,
+        clip_base_distribution=4,
+        base_distribution=None,
         name="BernsteinFlow",
     ) -> tfd.Distribution:
         """
@@ -78,35 +77,33 @@ class BernsteinFlow(tfd.TransformedDistribution):
 
             shape = prefer_static.shape(pvector)
 
-            p_len = []
-            self.bernstein_order = shape[-1]
-            if first_affine_trafo:
-                self.bernstein_order -= 2
-                p_len += [1, 1]
+            p_len = [1, 1]
+            self.bernstein_order = shape[-1] - 2
             if scale_base_distribution:
                 p_len += [1]
                 self.bernstein_order -= 1
 
             p_len.insert(2, self.bernstein_order)
 
+            pv = self.slice_parameter_vectors(pvector, p_len)
+
+            bijector = self.init_bijectors(
+                pv,
+                max_dist_scale=max_dist_scale,
+                scale_base_distribution=scale_base_distribution,
+                clip_base_distribution=clip_base_distribution,
+            )
+
             if tensorshape_util.rank(pvector.shape) > 1:
                 batch_shape = shape[:-1]
             else:
                 batch_shape = [1]
 
-            pv = self.slice_parameter_vectors(pvector, p_len)
-
-            bijector = self.init_bijectors(
-                pv,
-                bb_class=bb_class,
-                first_affine_trafo=first_affine_trafo,
-                scale_base_distribution=scale_base_distribution,
-                clip_domain=clip_domain,
-                hinge_softness=hinge_softness,
-            )
+            if base_distribution == None:
+                base_distribution = tfd.Normal(loc=tf.zeros(batch_shape), scale=1.0)
 
             super().__init__(
-                distribution=tfd.Normal(loc=tf.zeros(batch_shape), scale=1.0),
+                distribution=base_distribution,
                 bijector=bijector,
                 name=name,
             )
@@ -131,11 +128,9 @@ class BernsteinFlow(tfd.TransformedDistribution):
     def init_bijectors(
         self,
         pv,
-        bb_class,
-        first_affine_trafo,
+        max_dist_scale,
         scale_base_distribution,
-        clip_domain,
-        hinge_softness,
+        clip_base_distribution,
         name: str = "bernstein_flow",
     ) -> tfb.Bijector:
         """
@@ -159,53 +154,49 @@ class BernsteinFlow(tfd.TransformedDistribution):
         """
         bijectors = []
 
-        if first_affine_trafo and scale_base_distribution:
+        if scale_base_distribution:
             a1, b1, theta, a2 = pv
-        elif first_affine_trafo and not scale_base_distribution:
-            a1, b1, theta = pv
-        elif not first_affine_trafo and scale_base_distribution:
-            theta, a2 = pv
         else:
-            theta = pv[0]
+            a1, b1, theta = pv
+
+        def conatrain_scale(scale, high):
+            scale = high * tf.math.sigmoid(scale)
+            return scale
 
         if scale_base_distribution:
-            scale = tf.math.softplus(a2)[..., None]
+            scale = conatrain_scale(a2, max_dist_scale)[..., None]
         else:
             scale = 1.0
 
-        low_bound = -clip_domain * scale
-        high_bound = clip_domain * scale
+        low_bound = -clip_base_distribution * scale
+        high_bound = clip_base_distribution * scale
 
-        theta = bb_class.constrain_theta(theta, low=low_bound, high=high_bound)
+        theta = BernsteinBijector.constrain_theta(theta, low=low_bound, high=high_bound)
 
         # f1: ŷ = sigma(a1(x)*y - b1(x))
-        if first_affine_trafo:
-            f1_scale = tfb.Scale(tf.math.softplus(a1), name="f1_scale")
-            bijectors.append(f1_scale)
-            f1_shift = tfb.Shift(b1, name="f1_shift")
-            bijectors.append(f1_shift)
+        f1_scale = tfb.Scale(tf.math.softplus(a1), name="f1_scale")
+        bijectors.append(f1_scale)
+        f1_shift = tfb.Shift(b1, name="f1_shift")
+        bijectors.append(f1_shift)
 
         # clip to range [0, 1]
-        bijectors.append(tfb.Sigmoid())
+        clip = 1e-5  # this is necessary to prevent data flowing into the critical area
+        bijectors.append(tfb.Sigmoid(clip, 1 - clip))
 
         # f2: ẑ = Bernstein Polynomial
-        f2 = bb_class(theta=theta, name="f2")
+        f2 = BernsteinBijector(theta=theta, name="f2")
         bijectors.append(f2)
 
         # clip to valid range [min(theta), max(theta)]
-        bijectors.append(
-            tfb.Invert(
-                tfb.SoftClip(
-                    high=tf.math.reduce_max(theta, axis=-1),
-                    low=tf.math.reduce_min(theta, axis=-1),
-                    hinge_softness=hinge_softness,
-                )
-            )
-        )
+        if clip_base_distribution:
+            high = tf.math.reduce_max(theta, axis=-1)
+            low = tf.math.reduce_min(theta, axis=-1)
+
+            bijectors.append(tfb.Invert(tfb.Sigmoid(low=low, high=high)))
 
         # f3: z = a2(x)*ẑ - b2(x)
         if scale_base_distribution:
-            f3_scale = tfb.Scale(tf.math.softplus(a2), name="f3_scale")
+            f3_scale = tfb.Scale(conatrain_scale(a2, max_dist_scale), name="f3_scale")
             bijectors.append(f3_scale)
 
         bijectors = list(reversed(bijectors))

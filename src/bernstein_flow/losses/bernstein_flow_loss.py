@@ -32,6 +32,8 @@
 import tensorflow as tf
 from tensorflow.keras.losses import Loss
 
+from tensorflow_probability import distributions as tfd
+
 from bernstein_flow.distributions import BernsteinFlow
 
 
@@ -41,9 +43,7 @@ class BernsteinFlowLoss(Loss):
     a bijective transformation model using Bernstein polynomials.
     """
 
-    def __init__(
-            self,
-            **kwargs: dict):
+    def __init__(self, **kwargs: dict):
         """
         Constructs a new instance of the Keras Loss function.
 
@@ -55,9 +55,7 @@ class BernsteinFlowLoss(Loss):
         """
         super().__init__(**kwargs)
 
-    def call(self,
-             y: tf.Tensor,
-             pvector: tf.Tensor) -> tf.Tensor:
+    def call(self, y: tf.Tensor, pvector: tf.Tensor) -> tf.Tensor:
         """
         Evaluates the negative logarithmic likelihood given a sample y.
 
@@ -71,6 +69,6 @@ class BernsteinFlowLoss(Loss):
         """
         flow = BernsteinFlow(pvector)
 
-        nll = -flow.log_prob(y)
+        nll = -tfd.Independent((flow.log_prob(y))
 
         return nll
