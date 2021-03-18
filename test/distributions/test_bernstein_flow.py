@@ -29,61 +29,150 @@
 ###############################################################################
 
 # REQUIRED PYTHON MODULES #####################################################
+import random
+import numpy as np
+
 import tensorflow as tf
+
+from tensorflow.python.framework import random_seed
 
 import tensorflow_probability as tfp
 from tensorflow_probability import distributions as tfd
 
 from bernstein_flow.distributions import BernsteinFlow
 
+# Python RNG
+random.seed(42)
+
+# Numpy RNG
+np.random.seed(42)
+
+# TF RNG
+random_seed.set_seed(42)
+
 
 class BernsteinFlowTest(tf.test.TestCase):
+    def gen_pvs(self, batch_shape, order):
+        return tf.random.uniform(
+            shape=batch_shape + [4 + order], minval=-1000, maxval=100
+        )
 
-    def gen_sequential_model(
-            self,
-            output_shape,
-            distribution_lambda):
-        # Create a trainable distribution using the Sequential API.
-        model = tf.keras.models.Sequential([
-            tf.keras.layers.InputLayer(input_shape=(1,), dtype=tf.float32),
-            # The Dense serves no real purpose; it will change the event_shape.
-            tf.keras.layers.Dense(tf.math.reduce_prod(
-                output_shape), use_bias=False),
-            tf.keras.layers.Reshape(output_shape),
-            tfp.layers.DistributionLambda(distribution_lambda)
-        ])
-        model.summary()
-        return model
-
-    def gen_dist(self, batch_shape):
-        order = 5
+    def gen_dist(self, batch_shape, order=5, **kwds):
         if batch_shape != []:
-            n = tfd.Normal(loc=tf.zeros((batch_shape)),
-                           scale=tf.ones((batch_shape)))
-            bs = BernsteinFlow(tf.ones(batch_shape + [4 + order]))
+            n = tfd.Normal(loc=tf.zeros((batch_shape)), scale=tf.ones((batch_shape)))
+            bs = BernsteinFlow(self.gen_pvs(batch_shape, order), **kwds)
         else:
             n = tfd.Normal(loc=tf.zeros((1)), scale=tf.ones((1)))
-            bs = BernsteinFlow(tf.ones((4 + order)))
+            bs = BernsteinFlow(self.gen_pvs(batch_shape, order), **kwds)
         return n, bs
 
-    def test_dist(self, batch_shape=[]):
-        bernstein_order = 5
+    def f(self, normal_dist, trans_dist):
 
-        normal_dist, trans_dist = self.gen_dist(batch_shape)
+        for input_shape in [[1], [1, 1], [1] + normal_dist.batch_shape]:
+            x = tf.random.uniform(
+                shape=[1000] + normal_dist.batch_shape, minval=-100, maxval=100
+            )
 
-        for input_shape in [[1], [1, 1], [1] + batch_shape]:
-
-            # Check the distribution.
+            # Check the distribution type
             self.assertIsInstance(trans_dist, tfd.TransformedDistribution)
+
+            # check the shapes
             self.assertEqual(normal_dist.batch_shape, trans_dist.batch_shape)
             self.assertEqual(normal_dist.event_shape, trans_dist.event_shape)
-            self.assertEqual(normal_dist.sample(input_shape).shape,
-                             trans_dist.sample(input_shape).shape)
-            self.assertEqual(normal_dist.prob(tf.zeros(input_shape)).shape,
-                             trans_dist.prob(tf.zeros(input_shape)).shape)
+            self.assertEqual(
+                normal_dist.sample(input_shape).shape,
+                trans_dist.sample(input_shape).shape,
+            )
+            self.assertEqual(
+                normal_dist.prob(tf.zeros(input_shape)).shape,
+                trans_dist.prob(tf.zeros(input_shape)).shape,
+            )
+
+            # check the Normalization
+            self.assertAllClose(
+                normal_dist.cdf(normal_dist.dtype.min),
+                trans_dist.cdf(trans_dist.dtype.min),
+                atol=1e-3,
+            )
+            self.assertAllClose(
+                normal_dist.cdf(normal_dist.dtype.max),
+                trans_dist.cdf(trans_dist.dtype.max),
+                atol=1e-3,
+            )
+
+            # check for infs and nans
+            self.assertAllInRange(trans_dist.prob(x), 0, trans_dist.dtype.max)
+            self.assertAllInRange(
+                trans_dist.mean(), trans_dist.dtype.min, trans_dist.dtype.max
+            )
+            self.assertAllInRange(
+                trans_dist.sample(10000), trans_dist.dtype.min, trans_dist.dtype.max
+            )
+            try:
+                self.assertAllInRange(
+                    trans_dist.quantile(1e-5),
+                    trans_dist.dtype.min,
+                    trans_dist.dtype.max,
+                )
+                self.assertAllInRange(
+                    trans_dist.quantile(1 - 1e-5),
+                    trans_dist.dtype.min,
+                    trans_dist.dtype.max,
+                )
+            except NotImplementedError:
+                pass
 
     def test_dist_batch(self):
-        self.test_dist(batch_shape=[32])
+        normal_dist, trans_dist = self.gen_dist(batch_shape=[32])
+        self.f(normal_dist, trans_dist)
 
     def test_dist_multi(self):
-        self.test_dist(batch_shape=[32, 48])
+        normal_dist, trans_dist = self.gen_dist(batch_shape=[32, 48])
+        self.f(normal_dist, trans_dist)
+
+    def test_log_normal(self):
+        batch_shape = [32, 48]
+        log_normal = tfd.LogNormal(loc=tf.zeros(batch_shape), scale=1)
+        normal_dist, trans_dist = self.gen_dist(
+            batch_shape=batch_shape,
+            base_distribution=log_normal,
+            scale_base_distribution=False,
+        )
+        self.f(normal_dist, trans_dist)
+
+    def test_student_t(self):
+        batch_shape = [32, 48]
+        student_t = tfd.StudentT(2, loc=tf.zeros(batch_shape), scale=1)
+        normal_dist, trans_dist = self.gen_dist(
+            batch_shape=batch_shape,
+            base_distribution=student_t,
+            base_dist_lower_bound=-25,
+            base_dist_upper_bound=25,
+            scale_base_distribution=False,
+        )
+        self.f(normal_dist, trans_dist)
+
+    def test_weibull(self):
+        batch_shape = [32, 48]
+        weibull = tfd.Weibull(0.5, scale=tf.ones(batch_shape))
+        normal_dist, trans_dist = self.gen_dist(
+            batch_shape=batch_shape,
+            base_distribution=weibull,
+            scale_base_distribution=False,
+        )
+        self.f(normal_dist, trans_dist)
+
+    def test_small_numbers(self):
+        for o in [5, 20, 2000]:
+            bf = BernsteinFlow(
+                [1, 1] + 5 * [-1000] + (o - 4) * [1] + 5 * [-1000] + [1, 1, 1],
+            )
+            n = tfd.Normal(loc=tf.zeros((1)), scale=tf.ones((1)))
+            self.f(n, bf)
+
+    def test_random_numbers(self):
+        for bs in [[1], [32], [32, 48]]:
+            for _ in range(10):
+                bf = BernsteinFlow(self.gen_pvs(bs, 50))
+                n = tfd.Normal(loc=tf.zeros(bs), scale=tf.ones(bs))
+                self.f(n, bf)

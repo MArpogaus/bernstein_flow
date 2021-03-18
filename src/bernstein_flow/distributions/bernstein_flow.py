@@ -48,10 +48,15 @@ class BernsteinFlow(tfd.TransformedDistribution):
     polynomials as the bijector.
     """
 
-    def __init__(self,
-                 pvector: tf.Tensor,
-                 name='BernsteinFlow'
-                 ) -> tfd.Distribution:
+    def __init__(
+        self,
+        pvector: tf.Tensor,
+        scale_base_distribution=True,
+        base_distribution=None,
+        base_dist_lower_bound=None,
+        base_dist_upper_bound=None,
+        name="BernsteinFlow",
+    ) -> tfd.Distribution:
         """
         Generate the flow for the given parameter vector. This would be
         typically the output of a neural network.
@@ -68,32 +73,55 @@ class BernsteinFlow(tfd.TransformedDistribution):
         with tf.name_scope(name) as name:
             dtype = dtype_util.common_dtype([pvector], dtype_hint=tf.float32)
 
-            pvector = tensor_util.convert_nonref_to_tensor(
-                pvector, dtype=dtype)
+            pvector = tensor_util.convert_nonref_to_tensor(pvector, dtype=dtype)
 
             shape = prefer_static.shape(pvector)
-            self.bernstein_order = shape[-1] - 4
+
             if tensorshape_util.rank(pvector.shape) > 1:
                 batch_shape = shape[:-1]
             else:
                 batch_shape = [1]
 
-            a1, b1, theta, a2, b2 = self.slice_parameter_vectors(pvector)
+            if base_distribution == None:
+                base_distribution = tfd.Normal(loc=tf.zeros(batch_shape), scale=1.0)
+
+            tol = 1e-5
+            if base_dist_lower_bound == None:
+                self.lower_bound = tf.reshape(
+                    base_distribution.quantile(tol), tf.concat((batch_shape, [1]), 0)
+                )
+            else:
+                self.lower_bound = base_dist_lower_bound
+            if base_dist_upper_bound == None:
+                self.upper_bound = tf.reshape(
+                    base_distribution.quantile(1 - tol),
+                    tf.concat((batch_shape, [1]), 0),
+                )
+            else:
+                self.upper_bound = base_dist_upper_bound
+
+            p_len = [1, 1]
+            self.bernstein_order = shape[-1] - 2
+            if scale_base_distribution:
+                p_len += [1]
+                self.bernstein_order -= 1
+
+            p_len.insert(2, self.bernstein_order)
+
+            pv = self.slice_parameter_vectors(pvector, p_len)
 
             bijector = self.init_bijectors(
-                a1=tf.math.softplus(a1),
-                b1=b1,
-                theta=BernsteinBijector.constrain_theta(theta),
-                a2=tf.math.softplus(a2),
-                b2=b2
+                pv,
+                scale_base_distribution=scale_base_distribution,
             )
 
             super().__init__(
-                distribution=tfd.Normal(loc=tf.zeros(batch_shape), scale=1.),
+                distribution=base_distribution,
                 bijector=bijector,
-                name=name)
+                name=name,
+            )
 
-    def slice_parameter_vectors(self, pvector: tf.Tensor) -> list:
+    def slice_parameter_vectors(self, pvector: tf.Tensor, p_len) -> list:
         """
         Returns an unpacked list of parameter vectors.
 
@@ -103,24 +131,19 @@ class BernsteinFlow(tfd.TransformedDistribution):
         :returns:   unpacked list of parameter vectors.
         :rtype:     list
         """
-        p_len = [1, 1, self.bernstein_order, 1, 1]
-
         sliced_pvector = []
         for i in range(len(p_len)):
-            p = pvector[..., sum(p_len[:i]):sum(p_len[:i + 1])]
+            p = pvector[..., sum(p_len[:i]) : sum(p_len[: i + 1])]
             sliced_pvector.append(tf.squeeze(p))
 
-        a1, b1, theta, a2, b2 = sliced_pvector
+        return sliced_pvector
 
-        return a1, b1, theta, a2, b2
-
-    def init_bijectors(self,
-                       a1: tf.Tensor,
-                       b1: tf.Tensor,
-                       theta: tf.Tensor,
-                       a2: tf.Tensor,
-                       b2: tf.Tensor,
-                       name: str = 'bernstein_flow') -> tfb.Bijector:
+    def init_bijectors(
+        self,
+        pv,
+        scale_base_distribution,
+        name: str = "bernstein_flow",
+    ) -> tfb.Bijector:
         """
         Builds a normalizing flow using a Bernstein polynomial as Bijector.
 
@@ -142,41 +165,41 @@ class BernsteinFlow(tfd.TransformedDistribution):
         """
         bijectors = []
 
+        if scale_base_distribution:
+            a1, b1, theta, a2 = pv
+        else:
+            a1, b1, theta = pv
+
+        def conatrain_scale(scale, low):
+            scale = tf.math.softplus(scale) + low
+            return scale
+
+        if scale_base_distribution:
+            scale = conatrain_scale(a2, 1.0)[..., None]
+        else:
+            scale = 1.0
+
+        theta = BernsteinBijector.constrain_theta(
+            theta, low=scale * self.lower_bound, high=scale * self.upper_bound
+        )
+
         # f1: ŷ = sigma(a1(x)*y - b1(x))
-        f1_scale = tfb.Scale(
-            a1,
-            name='f1_scale'
-        )
+        f1_scale = tfb.Scale(conatrain_scale(a1, 1e-5), name="f1_scale")
         bijectors.append(f1_scale)
-        f1_shift = tfb.Shift(
-            b1,
-            name='f1_shift'
-        )
+        f1_shift = tfb.Shift(b1, name="f1_shift")
         bijectors.append(f1_shift)
 
         # clip to range [0, 1]
-        bijectors.append(
-            tfb.Sigmoid()
-        )
+        bijectors.append(tfb.Sigmoid())
 
         # f2: ẑ = Bernstein Polynomial
-        f2 = BernsteinBijector(
-            theta=theta,
-            name='f2'
-        )
+        f2 = BernsteinBijector(theta=theta, name="f2")
         bijectors.append(f2)
 
         # f3: z = a2(x)*ẑ - b2(x)
-        f3_scale = tfb.Scale(
-            a2,
-            name='f3_scale'
-        )
-        bijectors.append(f3_scale)
-        f3_shift = tfb.Shift(
-            b2,
-            name='f3_shift'
-        )
-        bijectors.append(f3_shift)
+        if scale_base_distribution:
+            f3_scale = tfb.Scale(conatrain_scale(a2, 1.0), name="f3_scale")
+            bijectors.append(f3_scale)
 
         bijectors = list(reversed(bijectors))
 
