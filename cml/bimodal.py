@@ -16,10 +16,7 @@ from functools import partial
 import pandas as pd
 import numpy as np
 
-
 import matplotlib.pyplot as plt
-
-from sklearn.utils import shuffle
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -79,7 +76,7 @@ def gen_data(t):
     t = np.concatenate([t1, t2])
     y = np.concatenate([y1, y2])
 
-    return shuffle(t[..., np.newaxis], y[..., np.newaxis], random_state=0)
+    return t[..., np.newaxis], y[..., np.newaxis]
 
 
 def gen_test_data(n=5, observations=100):
