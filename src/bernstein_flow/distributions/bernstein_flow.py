@@ -82,17 +82,17 @@ class BernsteinFlow(tfd.TransformedDistribution):
             else:
                 batch_shape = [1]
 
-            if base_distribution == None:
+            if base_distribution is None:
                 base_distribution = tfd.Normal(loc=tf.zeros(batch_shape), scale=1.0)
 
             tol = 1e-5
-            if base_dist_lower_bound == None:
+            if base_dist_lower_bound is None:
                 self.lower_bound = tf.reshape(
                     base_distribution.quantile(tol), tf.concat((batch_shape, [1]), 0)
                 )
             else:
                 self.lower_bound = base_dist_lower_bound
-            if base_dist_upper_bound == None:
+            if base_dist_upper_bound is None:
                 self.upper_bound = tf.reshape(
                     base_distribution.quantile(1 - tol),
                     tf.concat((batch_shape, [1]), 0),
@@ -133,7 +133,9 @@ class BernsteinFlow(tfd.TransformedDistribution):
         """
         sliced_pvector = []
         for i in range(len(p_len)):
-            p = pvector[..., sum(p_len[:i]) : sum(p_len[: i + 1])]
+            # fmt: off
+            p = pvector[..., sum(p_len[:i]):sum(p_len[:i + 1])]
+            # fmt: off
             sliced_pvector.append(tf.squeeze(p))
 
         return sliced_pvector

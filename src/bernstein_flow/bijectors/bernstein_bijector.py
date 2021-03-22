@@ -29,7 +29,7 @@
 ###############################################################################
 
 # REQUIRED PYTHON MODULES #####################################################
-import scipy.interpolate as I
+import scipy.interpolate as interp
 
 import numpy as np
 import tensorflow as tf
@@ -117,7 +117,7 @@ class BernsteinBijector(tfb.Bijector):
         self.z_max = np.max(z_fit, axis=0)
 
         ips = [
-            I.interp1d(
+            interp.interp1d(
                 x=np.squeeze(z_fit[..., i]),
                 y=np.squeeze(y_fit),
                 kind="cubic",
