@@ -85,7 +85,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
             if base_distribution is None:
                 base_distribution = tfd.Normal(loc=tf.zeros(batch_shape), scale=1.0)
 
-            tol = 1e-5
+            tol = 1e-4
             if base_dist_lower_bound is None:
                 self.lower_bound = tf.reshape(
                     base_distribution.quantile(tol), tf.concat((batch_shape, [1]), 0)
@@ -172,12 +172,14 @@ class BernsteinFlow(tfd.TransformedDistribution):
         else:
             a1, b1, theta = pv
 
-        def conatrain_scale(scale, low):
-            scale = tf.math.softplus(scale) + low
+        def conatrain_dist_scale(scale, low, high):
+            scale = (high-low) * tf.math.sigmoid(scale) + low
             return scale
 
+        min_dist_scale = 1.0
+        max_dist_scale = 2.0
         if scale_base_distribution:
-            scale = conatrain_scale(a2, 1.0)[..., None]
+            scale = conatrain_dist_scale(a2, min_dist_scale, max_dist_scale)[..., None]
         else:
             scale = 1.0
 
@@ -186,7 +188,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
         )
 
         # f1: ŷ = sigma(a1(x)*y - b1(x))
-        f1_scale = tfb.Scale(conatrain_scale(a1, 1e-5), name="f1_scale")
+        f1_scale = tfb.Scale(tf.math.softplus(a1) + 0.1, name="f1_scale")
         bijectors.append(f1_scale)
         f1_shift = tfb.Shift(b1, name="f1_shift")
         bijectors.append(f1_shift)
@@ -200,7 +202,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
 
         # f3: z = a2(x)*ẑ - b2(x)
         if scale_base_distribution:
-            f3_scale = tfb.Scale(conatrain_scale(a2, 1.0), name="f3_scale")
+            f3_scale = tfb.Scale(conatrain_dist_scale(a2, min_dist_scale, max_dist_scale), name="f3_scale")
             bijectors.append(f3_scale)
 
         bijectors = list(reversed(bijectors))

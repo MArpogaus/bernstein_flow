@@ -217,18 +217,18 @@ class BernsteinBijector(tfb.Bijector):
         :returns:   The constrained Bernstein coefficients.
         :rtype:     Tensor
         """
-        d = tf.concat(
+        eps = 1e-4
+        d = 5 * fn(theta_unconstrained) + eps
+        d /= tf.reduce_sum(d, axis=-1)[..., None]
+        d *= high - low
+        tc = tf.concat(
             (
-                tf.zeros_like(theta_unconstrained[..., :1]),
-                fn(theta_unconstrained) + 1e-4,
+                low * tf.ones_like(theta_unconstrained[..., :1]),
+                d,
             ),
             axis=-1,
         )
-        tc = tf.cumsum(d[..., 1:], axis=-1)
-        tmax = tf.reduce_max(tc, axis=-1)[..., None]
-        tmin = tf.reduce_min(tc, axis=-1)[..., None]
-        tc = (tc - tmin) / (tmax - tmin)
-        return (high - low) * tc + low
+        return tf.cumsum(tc, axis=-1)
 
     def _is_increasing(self, **kwargs):
         return tf.reduce_all(self.theta[..., 1:] >= self.theta[..., :-1])

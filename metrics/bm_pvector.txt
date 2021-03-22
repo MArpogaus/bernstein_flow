@@ -1,11 +1,13 @@
 BernsteinFlow:
     BernsteinFlow_invert_BernsteinFlow_chain_of_BernsteinFlow_f3_scale_of_BernsteinFlow_f2_of_BernsteinFlow_sigmoid_of_BernsteinFlow_f1_shift_of_BernsteinFlow_f1_scale:
         BernsteinFlow_chain_of_BernsteinFlow_f3_scale_of_BernsteinFlow_f2_of_BernsteinFlow_sigmoid_of_BernsteinFlow_f1_shift_of_BernsteinFlow_f1_scale:
-            BernsteinFlow_f3_scale: 1.0024688243865967
-            BernsteinFlow_f2: [[-4.2754197  -2.8505926  -1.430119   -0.00931501 -0.00749969 -0.00735617
-  -0.00721407 -0.0070715  -0.00692892 -0.00678682 -0.00664425 -0.00650215
-  -0.00635958 -0.00621748 -0.00607443  1.418798    2.8437166   4.26135
-   4.2744517   4.2751155 ]]
+            BernsteinFlow_f3_scale: 1.0330557823181152
+            BernsteinFlow_f2: [[-3.8419516e+00 -1.9216689e+00 -1.3215542e-03 -9.4317901e-04
+  -9.0003508e-04 -8.6108648e-04 -8.2262076e-04 -7.8421197e-04
+  -7.4580329e-04 -7.0739462e-04 -6.6898594e-04 -6.3057727e-04
+  -5.9216860e-04 -5.5375992e-04 -5.1535078e-04 -4.3054722e-04
+   1.9200425e+00  3.8403990e+00  3.8418067e+00  3.8418622e+00
+   3.8419082e+00]]
             BernsteinFlow_sigmoid: None, None
-            BernsteinFlow_f1_shift: -1.1937463283538818
-            BernsteinFlow_f1_scale: 2.219606876373291
+            BernsteinFlow_f1_shift: -1.549739122390747
+            BernsteinFlow_f1_scale: 2.544236660003662

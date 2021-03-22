@@ -1,4 +1,4 @@
-name: "train and evaluate model"
+name: "train and evaluate old faithful model"
 
 on: [push]
 
