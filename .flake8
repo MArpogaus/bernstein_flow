@@ -3,3 +3,4 @@ per-file-ignores =
     src/bernstein_flow/bijectors/__init__.py: F401
     src/bernstein_flow/distributions/__init__.py: F401
     src/bernstein_flow/losses/__init__.py: F401
+    cml/old_faithful.py: E501

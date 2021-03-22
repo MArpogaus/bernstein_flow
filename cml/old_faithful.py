@@ -21,11 +21,7 @@ import matplotlib.pyplot as plt
 import tensorflow as tf
 import tensorflow_probability as tfp
 
-from tensorflow_probability import distributions as tfd
-
-from tensorflow.keras import Model
 from tensorflow.keras.layers import Dense, InputLayer
-from tensorflow.keras.optimizers import Adam
 
 from bernstein_flow.distributions import BernsteinFlow
 
@@ -44,10 +40,7 @@ def negloglik(y_true, y_hat):
 
 
 # Data
-# Classic dataset containing the waiting time between eruptions and the duration of the eruption for the [Old Faithful Geyser](https://en.wikipedia.org/wiki/Old_Faithful) in [Yellowstone National Park](https://en.wikipedia.org/wiki/Yellowstone_National_Park).
-#
 # Extracted from the [built-in dataset in R](https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/faithful.html).
-#
 # Reference:  A. Azzalini and A. W. Bowman, “A Look at Some Data on the Old Faithful Geyser,” Journal of the Royal Statistical Society. Series C (Applied Statistics), vol. 39, no. 3, pp. 357–365, 1990, doi: 10.2307/2347385.
 y = np.asarray(
     (
@@ -147,7 +140,7 @@ fig.savefig(result_path + "of_dist.png")
 
 
 with open(result_path + "of_metrics.txt", "w") as metrics:
-    metrics.write("Min of loss: " + str(hist_df.loss.min()) + "\n---\n")
+    metrics.write("Min of loss: " + str(hist_df.loss.min()) + "\n")
     metrics.write("Mean of data: " + str(np.mean(y)) + "\n")
     metrics.write("Mean of Distribution: " + str(flow.mean().numpy().flatten()) + "\n")
 

@@ -1,0 +1,52 @@
+name: "train and evaluate bimodal model"
+
+on: [push]
+
+jobs:
+  run:
+    runs-on: [ubuntu-latest]
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: iterative/setup-cml@v1
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+
+      - name: cml
+        env:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+              pip install .
+              pip install pandas
+              python cml/bimodal.py
+
+              echo '# Bimodal Model' >> report.md
+              
+              echo '## Learning Curve' >> report.md
+              cml-publish bm_data.png --md >> report.md
+              
+              echo '## Learning Curve' >> report.md
+              cml-publish metrics/bm_hist.png --md >> report.md
+
+              echo '## Metrics' >> report.md
+              cat metrics/bm_metrics.txt >> report.md
+              
+              echo '## Parameter Vector' >> report.md
+              cat metrics/bm_pvector.txt >> report.md
+              
+              echo '## Results' >> report.md
+              cml-publish metrics/bm_dists.png --md >> report.md
+
+              echo '## Flow' >> report.md
+              cml-publish metrics/bm_flow.png --md >> report.md
+              cml-publish metrics/bm_bijectors.png --md >> report.md
+              cml-publish metrics/bm_trafo.png --md >> report.md
+
+              echo '## Bijector' >> report.md
+              cml-publish metrics/bm_bijector.png --md >> report.md
+              cml-publish metrics/bm_ildj.png --md >> report.md
+
+              cml-send-comment report.md
