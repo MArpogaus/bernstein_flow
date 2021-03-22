@@ -1,5 +1,4 @@
 name: "train and evaluate model"
-name: train-my-model
 
 on: [push]
 
