@@ -36,7 +36,6 @@ import tensorflow as tf
 
 from tensorflow.python.framework import random_seed
 
-import tensorflow_probability as tfp
 from tensorflow_probability import distributions as tfd
 
 from bernstein_flow.distributions import BernsteinFlow
