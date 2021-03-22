@@ -26,14 +26,14 @@ jobs:
               echo '# Old Faithful' >> report.md
               
               echo '## Learning Curve' >> report.md
-              cml-publish of_hist.png --md >> report.md
+              cml-publish metrics/of_hist.png --md >> report.md
 
               echo '## Metrics' >> report.md
-              cat of_metrics.txt >> report.md
+              cat metrics/of_metrics.txt >> report.md
               
               echo '## Parameter Vector' >> report.md
-              cat of_pvector.txt >> report.md
+              cat metrics/of_pvector.txt >> report.md
               
               echo '## Results' >> report.md
-              cml-publish of_dist.png --md >> report.md
+              cml-publish metrics/of_dist.png --md >> report.md
               cml-send-comment report.md
