@@ -292,5 +292,5 @@ def fun(y):
     return flow.bijector.inverse_log_det_jacobian(y, 0)
 
 
-plot_value_and_gradient(fun, y.copy())
+fig = plot_value_and_gradient(fun, y.copy())
 fig.savefig(result_path + "bm_ildj.png")

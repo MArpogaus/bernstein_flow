@@ -34,11 +34,11 @@ jobs:
               echo '## Metrics' >> report.md
               cat metrics/bm_metrics.txt >> report.md
               
-              echo '## Parameter Vector' >> report.md
-              cat metrics/bm_pvector.txt >> report.md
-              
               echo '## Results' >> report.md
               cml-publish metrics/bm_dists.png --md >> report.md
+
+              echo '## Parameter Vector for x = 1' >> report.md
+              cat metrics/bm_pvector.txt >> report.md
 
               echo '## Flow' >> report.md
               cml-publish metrics/bm_flow.png --md >> report.md
