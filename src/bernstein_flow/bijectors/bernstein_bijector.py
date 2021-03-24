@@ -218,7 +218,7 @@ class BernsteinBijector(tfb.Bijector):
         :rtype:     Tensor
         """
         eps = 1e-4
-        d = fn(theta_unconstrained) + eps
+        d = 5 * fn(theta_unconstrained) + eps
         d /= tf.reduce_sum(d, axis=-1)[..., None]
         d *= high - low
         tc = tf.concat(

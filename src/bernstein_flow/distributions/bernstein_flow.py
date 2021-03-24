@@ -85,7 +85,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
             if base_distribution is None:
                 base_distribution = tfd.Normal(loc=tf.zeros(batch_shape), scale=1.0)
 
-            tol = 1e-4
+            tol = 1e-3
             if base_dist_lower_bound is None:
                 self.lower_bound = tf.reshape(
                     base_distribution.quantile(tol), tf.concat((batch_shape, [1]), 0)
