@@ -29,17 +29,20 @@
 ###############################################################################
 
 # REQUIRED PYTHON MODULES #####################################################
+import numpy as np
 import tensorflow as tf
 
 from bernstein_flow.bijectors import BernsteinBijector
+from bernstein_flow.bijectors.bernstein import constrain_thetas
 
 
 class BernsteinBijectorTest(tf.test.TestCase):
     def test_inverse(self, batch_shape=[], x_shape=[100], order=10):
-        thetas = BernsteinBijector.constrain_theta(tf.ones(batch_shape + [order]))
+        thetas = constrain_thetas(
+            np.ones(batch_shape + [order]).astype(np.float32), low=-3, high=3
+        )
         print(thetas)
-        eps = 1.0e-2
-        x = tf.random.uniform(x_shape, eps, 1.0 - eps)
+        x = np.float32(np.random.uniform(0 + 1e-2, 1 - 1e-2, x_shape))
 
         bb = BernsteinBijector(thetas=thetas)
 
