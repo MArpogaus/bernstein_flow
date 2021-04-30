@@ -29,20 +29,21 @@
 ###############################################################################
 
 # REQUIRED PYTHON MODULES #####################################################
-import numpy as np
 import tensorflow as tf
 
 from bernstein_flow.bijectors import BernsteinBijector
 from bernstein_flow.bijectors.bernstein import constrain_thetas
 
 
+tf.random.set_seed(42)
+
+
 class BernsteinBijectorTest(tf.test.TestCase):
     def test_inverse(self, batch_shape=[], x_shape=[100], order=10):
-        thetas = constrain_thetas(
-            np.ones(batch_shape + [order]).astype(np.float32), low=-3, high=3
-        )
+        thetas = constrain_thetas(tf.ones(batch_shape + [order]), low=-3, high=3)
         print(thetas)
-        x = np.float32(np.random.uniform(0 + 1e-2, 1 - 1e-2, x_shape))
+        eps = 1e-2
+        x = tf.random.uniform(x_shape, eps, 1.0 - eps)
 
         bb = BernsteinBijector(thetas=thetas)
 
@@ -55,9 +56,9 @@ class BernsteinBijectorTest(tf.test.TestCase):
         # Use identity to invalidate cache.
         ildj = bb.inverse_log_det_jacobian(tf.identity(forward_x), event_ndims=1)
 
-        self.assertAllClose(x, inverse_x, rtol=1e-5, atol=1e-4)
-        self.assertAllClose(forward_x, forward_inverse_x, rtol=1e-5, atol=1e-4)
-        self.assertAllClose(ildj, -fldj, rtol=1e-5, atol=0.0)
+        self.assertAllClose(x, inverse_x, rtol=1e-5, atol=1e-7)
+        self.assertAllClose(forward_x, forward_inverse_x, rtol=1e-6, atol=1e-7)
+        self.assertAllClose(ildj, -fldj, rtol=1e-5, atol=1e-7)
 
     def test_inverse_batched(self):
         self.test_inverse(batch_shape=[2], x_shape=[100, 2])
