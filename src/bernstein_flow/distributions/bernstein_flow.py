@@ -35,11 +35,85 @@ from tensorflow_probability import bijectors as tfb
 from tensorflow_probability import distributions as tfd
 
 from bernstein_flow.bijectors import BernsteinBijector
+from bernstein_flow.bijectors.bernstein_bijector import constrain_thetas
 
 from tensorflow_probability.python.internal import dtype_util
 from tensorflow_probability.python.internal import prefer_static
 from tensorflow_probability.python.internal import tensor_util
-from tensorflow_probability.python.internal import tensorshape_util
+
+
+def slice_parameter_vector(pvector: tf.Tensor, p_spec: dict = None) -> dict:
+    """slices parameters of the given size form a tensor.
+
+    :param pvector: The parameter vector.
+    :type pvector: tf.Tensor
+    :param p_spec: specification of parameter sizes in the form {'parameter_name': size}
+    :type p_spec: dict
+    :returns: Dictionary containing the scliced parameters
+    :rtype: dict
+
+    """
+    with tf.name_scope("slice_parameter_vectors"):
+        if p_spec is None:
+            shape = prefer_static.shape(pvector)
+            bernstein_order = shape[-1] - 3
+            p_spec = {
+                "a1": 1,
+                "b1": 1,
+                "thetas": bernstein_order,
+                "a2": 1,
+            }
+
+        parameters = {}
+        offset = 0
+        for name, length in p_spec.items():
+            p = pvector[..., offset : (offset + length)]
+            offset += length
+            parameters[name] = tf.squeeze(p, name=name)
+        return parameters
+
+
+def ensure_positive(x: tf.Tensor, min_value: float = 1e-8, name: str = None):
+    """Activation function wich ensures that all given values are positive <= min_value.
+
+    :param x: Tensor to evaluate the function on.
+    :param min_value: minimum value (optional)
+      Default Value: 1e-8
+    :param name: name for the operation (optional)
+    :type name: str
+    :returns: Tensor with positive values
+
+    """
+    with tf.name_scope("ensure_positive"):
+        scale = tf.math.softplus(x) + min_value
+        return tf.identity(scale, name=name)
+
+
+def apply_activation(
+    thetas, a1=None, b1=None, a2=None, support=None, allow_values_outside_support=False
+):
+    with tf.name_scope("apply_activation"):
+        if support is None:
+            support = (tf.constant(-4.0, name="low"), tf.constant(4.0, name="high"))
+        low, high = support
+        result = {}
+        if tf.is_tensor(a1):
+            result["a1"] = ensure_positive(a1, name="a1")
+        if tf.is_tensor(b1):
+            result["b1"] = tf.identity(b1, name="b1")
+        if tf.is_tensor(a2):
+            result["a2"] = ensure_positive(a2, min_value=1.0, name="a2")
+            low *= result["a2"][..., tf.newaxis]
+            high *= result["a2"][..., tf.newaxis]
+
+        result["thetas"] = constrain_thetas(
+            thetas_unconstrained=thetas,
+            low=low,
+            high=high,
+            allow_values_outside_support=allow_values_outside_support,
+        )
+
+        return result
 
 
 class BernsteinFlow(tfd.TransformedDistribution):
@@ -50,69 +124,43 @@ class BernsteinFlow(tfd.TransformedDistribution):
 
     def __init__(
         self,
-        pvector: tf.Tensor,
-        scale_base_distribution=True,
+        thetas: tf.Tensor,
+        a1=None,
+        b1=None,
+        a2=None,
         base_distribution=None,
-        base_dist_lower_bound=None,
-        base_dist_upper_bound=None,
+        clip_to_bernstein_domain=True,
+        bb_class=BernsteinBijector,
         name="BernsteinFlow",
     ) -> tfd.Distribution:
-        """
-        Generate the flow for the given parameter vector. This would be
-        typically the output of a neural network.
-
-        To use it as a loss function see
-        `bernstein_flow.losses.BernsteinFlowLoss`.
-
-        :param      pvector:       The paramter vector.
-        :type       pvector:       Tensor
-
-        :returns:   The transformed distribution (normalizing flow)
-        :rtype:     Distribution
-        """
         with tf.name_scope(name) as name:
-            dtype = dtype_util.common_dtype([pvector], dtype_hint=tf.float32)
+            dtype = dtype_util.common_dtype([thetas, a1, b1, a2], dtype_hint=tf.float32)
 
-            pvector = tensor_util.convert_nonref_to_tensor(pvector, dtype=dtype)
+            thetas = tensor_util.convert_nonref_to_tensor(
+                thetas, dtype=dtype, name="thetas"
+            )
 
-            shape = prefer_static.shape(pvector)
+            if tf.is_tensor(a1):
+                a1 = tensor_util.convert_nonref_to_tensor(a1, dtype=dtype, name="a1")
 
-            if tensorshape_util.rank(pvector.shape) > 1:
-                batch_shape = shape[:-1]
-            else:
-                batch_shape = [1]
+            if tf.is_tensor(b1):
+                b1 = tensor_util.convert_nonref_to_tensor(b1, dtype=dtype, name="b1")
+
+            if tf.is_tensor(a2):
+                a2 = tensor_util.convert_nonref_to_tensor(a2, dtype=dtype, name="a2")
+
+            shape = prefer_static.shape(thetas)
 
             if base_distribution is None:
-                base_distribution = tfd.Normal(loc=tf.zeros(batch_shape), scale=1.0)
-
-            tol = 1e-3
-            if base_dist_lower_bound is None:
-                self.lower_bound = tf.reshape(
-                    base_distribution.quantile(tol), tf.concat((batch_shape, [1]), 0)
-                )
-            else:
-                self.lower_bound = base_dist_lower_bound
-            if base_dist_upper_bound is None:
-                self.upper_bound = tf.reshape(
-                    base_distribution.quantile(1 - tol),
-                    tf.concat((batch_shape, [1]), 0),
-                )
-            else:
-                self.upper_bound = base_dist_upper_bound
-
-            p_len = [1, 1]
-            self.bernstein_order = shape[-1] - 2
-            if scale_base_distribution:
-                p_len += [1]
-                self.bernstein_order -= 1
-
-            p_len.insert(2, self.bernstein_order)
-
-            pv = self.slice_parameter_vectors(pvector, p_len)
+                base_distribution = tfd.Normal(loc=tf.zeros(shape[:-1]), scale=1.0)
 
             bijector = self.init_bijectors(
-                pv,
-                scale_base_distribution=scale_base_distribution,
+                thetas,
+                a1=a1,
+                b1=b1,
+                a2=a2,
+                clip_to_bernstein_domain=clip_to_bernstein_domain,
+                bb_class=bb_class,
             )
 
             super().__init__(
@@ -121,30 +169,60 @@ class BernsteinFlow(tfd.TransformedDistribution):
                 name=name,
             )
 
-    def slice_parameter_vectors(self, pvector: tf.Tensor, p_len) -> list:
-        """
-        Returns an unpacked list of parameter vectors.
+    @classmethod
+    def from_pvector(
+        cls,
+        pvector,
+        scale_data=True,
+        shift_data=True,
+        scale_base_distribution=True,
+        support=None,
+        allow_values_outside_support=True,
+        **kwds
+    ):
+        with tf.name_scope("from_pvector"):
+            dtype = dtype_util.common_dtype([pvector], dtype_hint=tf.float32)
 
-        :param      pvector:  The parameter vector.
-        :type       pvector:  Tensor
+            pvector = tensor_util.convert_nonref_to_tensor(
+                pvector, dtype=dtype, name="pvector"
+            )
 
-        :returns:   unpacked list of parameter vectors.
-        :rtype:     list
-        """
-        sliced_pvector = []
-        for i in range(len(p_len)):
-            # fmt: off
-            p = pvector[..., sum(p_len[:i]):sum(p_len[:i + 1])]
-            # fmt: off
-            sliced_pvector.append(tf.squeeze(p))
+            shape = prefer_static.shape(pvector)
 
-        return sliced_pvector
+            p_spec = {}
+
+            bernstein_order = shape[-1]
+
+            if scale_data:
+                p_spec["a1"] = 1
+                bernstein_order -= 1
+
+            if shift_data:
+                p_spec["b1"] = 1
+                bernstein_order -= 1
+
+            if scale_base_distribution:
+                p_spec["a2"] = 1
+                bernstein_order -= 1
+
+            p_spec["thetas"] = bernstein_order
+            return cls(
+                **apply_activation(
+                    **slice_parameter_vector(pvector, p_spec),
+                    support=support,
+                    allow_values_outside_support=allow_values_outside_support
+                ),
+                **kwds
+            )
 
     def init_bijectors(
         self,
-        pv,
-        scale_base_distribution,
-        name: str = "bernstein_flow",
+        thetas,
+        a1=None,
+        b1=None,
+        a2=None,
+        clip_to_bernstein_domain=True,
+        bb_class=BernsteinBijector,
     ) -> tfb.Bijector:
         """
         Builds a normalizing flow using a Bernstein polynomial as Bijector.
@@ -165,49 +243,33 @@ class BernsteinFlow(tfd.TransformedDistribution):
         :returns:   The Bernstein flow.
         :rtype:     Bijector
         """
-        bijectors = []
+        with tf.name_scope("init_bijectors"):
+            bijectors = []
 
-        if scale_base_distribution:
-            a1, b1, theta, a2 = pv
-        else:
-            a1, b1, theta = pv
+            # f1: ŷ = sigma(a1(x)*y - b1(x))
+            if tf.is_tensor(a1):
+                f1_scale = tfb.Scale(a1, name="scale1")
+                bijectors.append(f1_scale)
+            if tf.is_tensor(b1):
+                f1_shift = tfb.Shift(b1, name="shift1")
+                bijectors.append(f1_shift)
 
-        def conatrain_dist_scale(scale, low, high):
-            scale = (high-low) * tf.math.sigmoid(scale) + low
-            return scale
+            # clip to domain [0, 1]
+            if clip_to_bernstein_domain:
+                bijectors.append(tfb.Sigmoid(name="sigmoid"))
 
-        min_dist_scale = 1.0
-        max_dist_scale = 2.0
-        if scale_base_distribution:
-            scale = conatrain_dist_scale(a2, min_dist_scale, max_dist_scale)[..., None]
-        else:
-            scale = 1.0
+            # f2: ẑ = Bernstein Polynomial
+            f2 = bb_class(thetas, name="bpoly")
+            bijectors.append(f2)
 
-        theta = BernsteinBijector.constrain_theta(
-            theta, low=scale * self.lower_bound, high=scale * self.upper_bound
-        )
+            # f3: z = a2(x)*ẑ - b2(x)
+            if tf.is_tensor(a2):
+                f3_scale = tfb.Scale(a2, name="scale2")
+                bijectors.append(f3_scale)
 
-        # f1: ŷ = sigma(a1(x)*y - b1(x))
-        f1_scale = tfb.Scale(tf.math.softplus(a1) + 0.1, name="f1_scale")
-        bijectors.append(f1_scale)
-        f1_shift = tfb.Shift(b1, name="f1_shift")
-        bijectors.append(f1_shift)
+            bijectors = list(reversed(bijectors))
 
-        # clip to range [0, 1]
-        bijectors.append(tfb.Sigmoid())
-
-        # f2: ẑ = Bernstein Polynomial
-        f2 = BernsteinBijector(theta=theta, name="f2")
-        bijectors.append(f2)
-
-        # f3: z = a2(x)*ẑ - b2(x)
-        if scale_base_distribution:
-            f3_scale = tfb.Scale(conatrain_dist_scale(a2, min_dist_scale, max_dist_scale), name="f3_scale")
-            bijectors.append(f3_scale)
-
-        bijectors = list(reversed(bijectors))
-
-        return tfb.Invert(tfb.Chain(bijectors))
+            return tfb.Invert(tfb.Chain(bijectors))
 
     def _mean(self):
         samples = self.sample(10000)

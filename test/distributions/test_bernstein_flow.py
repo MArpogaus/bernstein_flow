@@ -59,12 +59,13 @@ class BernsteinFlowTest(tf.test.TestCase):
     def gen_dist(self, batch_shape, order=5, **kwds):
         if batch_shape != []:
             n = tfd.Normal(loc=tf.zeros((batch_shape)), scale=tf.ones((batch_shape)))
-            bs = BernsteinFlow(self.gen_pvs(batch_shape, order), **kwds)
+            bs = BernsteinFlow.from_pvector(self.gen_pvs(batch_shape, order), **kwds)
         else:
             n = tfd.Normal(loc=tf.zeros((1)), scale=tf.ones((1)))
-            bs = BernsteinFlow(self.gen_pvs(batch_shape, order), **kwds)
+            bs = BernsteinFlow.from_pvector(self.gen_pvs(batch_shape, order), **kwds)
         return n, bs
 
+    @tf.function
     def f(self, normal_dist, trans_dist):
 
         for input_shape in [[1], [1, 1], [1] + normal_dist.batch_shape]:
@@ -145,8 +146,7 @@ class BernsteinFlowTest(tf.test.TestCase):
         normal_dist, trans_dist = self.gen_dist(
             batch_shape=batch_shape,
             base_distribution=student_t,
-            base_dist_lower_bound=-25,
-            base_dist_upper_bound=25,
+            support=(-25, 25),
             scale_base_distribution=False,
         )
         self.f(normal_dist, trans_dist)
