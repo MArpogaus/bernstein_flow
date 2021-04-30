@@ -177,7 +177,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
         shift_data=True,
         scale_base_distribution=True,
         support=None,
-        allow_values_outside_support=True,
+        allow_values_outside_support=False,
         **kwds
     ):
         with tf.name_scope("from_pvector"):
