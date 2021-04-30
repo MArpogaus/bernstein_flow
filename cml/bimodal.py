@@ -5,7 +5,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2021-03-22 16:42:31 (Marcel Arpogaus)
-# changed : 2021-01-20 08:37:41 (Marcel Arpogaus)
+# changed : 2021-04-30 18:53:50 (Marcel Arpogaus)
 # DESCRIPTION ##################################################################
 # ...
 # LICENSE ######################################################################
@@ -108,7 +108,9 @@ def gen_model(bernstein_order=9, **kwds):
     )
 
     def bf(y_pred):
-        return BernsteinFlow(y_pred, **kwds)
+        return BernsteinFlow.from_pvector(
+            y_pred, allow_values_outside_support=True, **kwds
+        )
 
     def my_loss_fn(y_true, y_pred):
         return -tfd.Independent(bf(y_pred)).log_prob(tf.squeeze(y_true))

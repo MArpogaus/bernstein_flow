@@ -5,7 +5,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2021-03-22 11:14:00 (Marcel Arpogaus)
-# changed : 2021-01-20 08:37:41 (Marcel Arpogaus)
+# changed : 2021-04-30 18:54:58 (Marcel Arpogaus)
 # DESCRIPTION ##################################################################
 # ...
 # LICENSE ######################################################################
@@ -109,7 +109,9 @@ flow_model.add(InputLayer(input_shape=(1)))
 # Here could come a gigantus network
 flow_model.add(Dense(3 + bernstein_order))
 flow_model.add(
-    tfp.layers.DistributionLambda(BernsteinFlow)
+    tfp.layers.DistributionLambda(
+        lambda pv: BernsteinFlow.from_pvector(pv, allow_values_outside_support=True)
+    )
 )  # <--- Replace the Normal distribution with the Transformed Distribution
 
 
