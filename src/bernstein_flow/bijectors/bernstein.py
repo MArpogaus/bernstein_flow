@@ -192,7 +192,7 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
             )
 
     def inverse(self, z):
-        clip = 1.0e-8
+        clip = 1.0e-6
         # z=tf.clip_by_value(z, self.z_min + clip, self.z_max-clip)
         y = super().inverse(z)
         return tf.clip_by_value(y, clip, 1.0 - clip)
