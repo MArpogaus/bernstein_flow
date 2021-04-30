@@ -177,8 +177,8 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
                     objective_fn,
                     low=self.z_min,
                     high=self.z_max,
-                    position_tolerance=1e-3,
-                    # value_tolerance=1e-6,
+                    # position_tolerance=1e-6,
+                    # value_tolerance=1e-3,
                     max_iterations=max_iterations - 1,
                 )
 
@@ -186,13 +186,13 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
                 fn=b_poly,
                 domain_constraint_fn=domain_constraint_fn,
                 root_search_fn=root_search_fn,
-                max_iterations=5,
+                max_iterations=50,
                 name=name,
                 **kwds
             )
 
     def inverse(self, z):
-        clip = 1.0e-4
+        clip = 1.0e-8
         # z=tf.clip_by_value(z, self.z_min + clip, self.z_max-clip)
         y = super().inverse(z)
         return tf.clip_by_value(y, clip, 1.0 - clip)
