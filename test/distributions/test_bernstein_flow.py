@@ -29,25 +29,13 @@
 ###############################################################################
 
 # REQUIRED PYTHON MODULES #####################################################
-import random
-import numpy as np
-
 import tensorflow as tf
-
-from tensorflow.python.framework import random_seed
 
 from tensorflow_probability import distributions as tfd
 
 from bernstein_flow.distributions import BernsteinFlow
 
-# Python RNG
-random.seed(42)
-
-# Numpy RNG
-np.random.seed(42)
-
-# TF RNG
-random_seed.set_seed(42)
+tf.random.set_seed(42)
 
 
 class BernsteinFlowTest(tf.test.TestCase):
@@ -65,7 +53,6 @@ class BernsteinFlowTest(tf.test.TestCase):
             bs = BernsteinFlow.from_pvector(self.gen_pvs(batch_shape, order), **kwds)
         return n, bs
 
-    @tf.function
     def f(self, normal_dist, trans_dist):
 
         for input_shape in [[1], [1, 1], [1] + normal_dist.batch_shape]:
@@ -136,6 +123,30 @@ class BernsteinFlowTest(tf.test.TestCase):
         normal_dist, trans_dist = self.gen_dist(
             batch_shape=batch_shape,
             base_distribution=log_normal,
+            support=(1e-10, tf.math.exp(4.0)),
+            scale_base_distribution=True,
+        )
+        self.f(normal_dist, trans_dist)
+
+    def test_logistic(self):
+        batch_shape = [32, 48]
+        logistic = tfd.Logistic(loc=tf.zeros(batch_shape), scale=1)
+        normal_dist, trans_dist = self.gen_dist(
+            batch_shape=batch_shape,
+            base_distribution=logistic,
+            support=(-6, 6),
+            scale_base_distribution=True,
+            allow_values_outside_support=True,
+        )
+        self.f(normal_dist, trans_dist)
+
+    def test_uniform(self):
+        batch_shape = [32, 48]
+        uniform = tfd.Uniform(-tf.ones(batch_shape), tf.ones(batch_shape))
+        normal_dist, trans_dist = self.gen_dist(
+            batch_shape=batch_shape,
+            base_distribution=uniform,
+            support=(-1.0, 1.0),
             scale_base_distribution=False,
         )
         self.f(normal_dist, trans_dist)
@@ -148,6 +159,7 @@ class BernsteinFlowTest(tf.test.TestCase):
             base_distribution=student_t,
             support=(-25, 25),
             scale_base_distribution=False,
+            allow_values_outside_support=True,
         )
         self.f(normal_dist, trans_dist)
 
@@ -157,6 +169,7 @@ class BernsteinFlowTest(tf.test.TestCase):
         normal_dist, trans_dist = self.gen_dist(
             batch_shape=batch_shape,
             base_distribution=weibull,
+            support=(1e-10, 50),
             scale_base_distribution=False,
         )
         self.f(normal_dist, trans_dist)

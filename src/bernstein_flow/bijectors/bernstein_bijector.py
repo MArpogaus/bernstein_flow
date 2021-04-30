@@ -43,6 +43,47 @@ from tensorflow_probability.python.internal import tensorshape_util
 from tensorflow_probability.python.internal import prefer_static
 
 
+def constrain_thetas(
+    thetas_unconstrained: tf.Tensor,
+    high=tf.constant(3.0, name="high"),
+    low=tf.constant(-3.0, name="low"),
+    allow_values_outside_support=False,
+    eps=1e-4,
+    fn=tf.math.softmax,
+) -> tf.Tensor:
+    """Ensures monotone increasing Bernstein coefficients.
+
+    :param thetas_unconstrained: Tensor containing the distance of the
+      Bernstein coefficients.
+    :param low: The lower bound.
+    :param high: The upper bound.
+    :param allow_values_outside_support: Use the first and last parameter to
+      increase/decrease the upper/lower bound.
+    :param eps: Optional minimum distance of thetas. Default Value: 1e-8
+    :param fn: Function to ensure positive values.
+    :returns:   Moncton increasing Bernstein coefficients.
+    :rtype:     Tensor
+
+    """
+    with tf.name_scope("constrain_theta"):
+        if allow_values_outside_support:
+            low -= fn(thetas_unconstrained[..., :1], name="low")
+            high += fn(thetas_unconstrained[..., -1:], name="high")
+            d = fn(thetas_unconstrained[..., 1:-1]) + eps
+        else:
+            d = fn(thetas_unconstrained) + eps
+        d /= tf.reduce_sum(d, axis=-1)[..., None]
+        d *= high - low
+        tc = tf.concat(
+            (
+                low * tf.ones_like(thetas_unconstrained[..., :1]),
+                d,
+            ),
+            axis=-1,
+        )
+        return tf.cumsum(tc, axis=-1, name="theta")
+
+
 class BernsteinBijector(tfb.Bijector):
     """
     Implementing Bernstein polynomials using the `tfb.Bijector` interface for
@@ -200,35 +241,8 @@ class BernsteinBijector(tfb.Bijector):
         return self.reshape_out(sample_shape, ldj)
 
     @classmethod
-    def constrain_theta(
-        cls: type, theta_unconstrained: tf.Tensor, high=5, low=-5, fn=tf.math.sigmoid
-    ) -> tf.Tensor:
-        """
-        Class method to calculate theta_1 = h_1, theta_k = theta_k-1 + exp(h_k)
-
-        :param      cls:                  The class as implicit first argument.
-        :type       cls:                  type
-        :param      theta_unconstrained:  The unconstrained Bernstein
-                                          coefficients.
-        :type       theta_unconstrained:  Tensor
-        :param      fn:                   The used activation function.
-        :type       fn:                   Function
-
-        :returns:   The constrained Bernstein coefficients.
-        :rtype:     Tensor
-        """
-        eps = 1e-4
-        d = fn(theta_unconstrained) + eps
-        d /= tf.reduce_sum(d, axis=-1)[..., None]
-        d *= high - low
-        tc = tf.concat(
-            (
-                low * tf.ones_like(theta_unconstrained[..., :1]),
-                d,
-            ),
-            axis=-1,
-        )
-        return tf.cumsum(tc, axis=-1)
+    def constrain_theta(cls: type, *args, **kwds) -> tf.Tensor:
+        return constrain_thetas(*args, **kwds)
 
     def _is_increasing(self, **kwargs):
         return tf.reduce_all(self.theta[..., 1:] >= self.theta[..., :-1])
