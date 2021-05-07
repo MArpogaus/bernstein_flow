@@ -58,46 +58,55 @@ def reshape_out(batch_shape, sample_shape, y):
     return tf.reshape(y, output_shape)
 
 
+def bernstein_polynom_jacobean(theta):
+    theta_shape = prefer_static.shape(theta)
+    order = theta_shape[-1]
+
+    beta_dist_h_dash = gen_beta_dist_h_dash(order, theta.dtype)
+
+    def b_poly_dash(y):
+        y = tf.clip_by_value(y, 0, 1.0)
+        by = beta_dist_h_dash.prob(y)
+        dtheta = theta[..., 1:] - theta[..., 0:-1]
+
+        dz_dy = tf.reduce_sum(by * dtheta, axis=-1)
+
+        return dz_dy
+
+    return b_poly_dash
+
+
 def bernstein_polynom(theta):
     theta_shape = prefer_static.shape(theta)
     order = theta_shape[-1]
     batch_shape = theta_shape[:-1]
 
     beta_dist_h = gen_beta_dist_h(order, theta.dtype)
-    beta_dist_h_dash = gen_beta_dist_h_dash(order, theta.dtype)
 
+    # @tf.custom_gradient
     def b_poly(y):
-        y = tf.clip_by_value(y, 0, 1.0)
+        # def grad_fn(upstream):
+        #     dy_dz = bernstein_polynom_jacobean(theta)(y)
+        #     return upstream * dy_dz
 
+        # y = tf.clip_by_value(y, 0, 1.0)
         sample_shape = prefer_static.shape(y)
 
         y = y[..., tf.newaxis]
         by = beta_dist_h.prob(y)
         z = tf.reduce_mean(by * theta, axis=-1)
 
-        return reshape_out(batch_shape, sample_shape, z)
+        return reshape_out(batch_shape, sample_shape, z)  # , grad_fn
 
-    def grad(y):
-        y = tf.clip_by_value(y, 0, 1.0)
-
-        sample_shape = prefer_static.shape(y)
-
-        y = y[..., tf.newaxis]
-        by = beta_dist_h_dash.prob(y)
-        dtheta = theta[..., 1:] - theta[..., 0:-1]
-        ldj = tf.math.log(tf.reduce_sum(by * dtheta, axis=-1))
-
-        return reshape_out(batch_shape, sample_shape, ldj)
-
-    return b_poly, grad
+    return b_poly
 
 
 def constrain_thetas(
     thetas_unconstrained: tf.Tensor,
-    low,
-    high,
+    high=tf.constant(5.0, name="high"),
+    low=tf.constant(-5.0, name="low"),
     allow_values_outside_support=False,
-    eps=1e-8,
+    eps=1e-4,
     fn=tf.math.softmax,
 ) -> tf.Tensor:
     """Ensures monotone increasing Bernstein coefficients.
@@ -163,33 +172,52 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
             self.z_min = tf.math.reduce_min(thetas, axis=-1)
             self.z_max = tf.math.reduce_max(thetas, axis=-1)
 
-            b_poly, grad = bernstein_polynom(thetas)
-            self._forward_log_det_jacobian = grad
+            b_poly = bernstein_polynom(thetas)
+
+            def ldj(y):
+                sample_shape = prefer_static.shape(y)
+                batch_shape = theta_shape[:-1]
+
+                y = y[..., tf.newaxis]
+
+                dz_dy = bernstein_polynom_jacobean(thetas)(y)
+                ldj = tf.math.log(dz_dy)
+                return reshape_out(batch_shape, sample_shape, ldj)
+
+            self._forward_log_det_jacobian = ldj
 
             # clip = 1.0e-9
             domain_constraint_fn = partial(
                 tf.clip_by_value, clip_value_min=0.0, clip_value_max=1.0
             )
 
-            @tf.function
             def root_search_fn(objective_fn, _, max_iterations=None):
-                return tfp.math.find_root_chandrupatla(
+                (
+                    estimated_root,
+                    objective_at_estimated_root,
+                    iteration,
+                ) = tfp.math.find_root_chandrupatla(
                     objective_fn,
                     low=self.z_min,
                     high=self.z_max,
-                    # position_tolerance=1e-6,
-                    # value_tolerance=1e-3,
+                    position_tolerance=1e-8,
+                    # value_tolerance=1e-6,
                     max_iterations=max_iterations - 1,
                 )
+                return estimated_root, objective_at_estimated_root, iteration
 
             super().__init__(
                 fn=b_poly,
                 domain_constraint_fn=domain_constraint_fn,
                 root_search_fn=root_search_fn,
-                max_iterations=50,
+                max_iterations=20,
                 name=name,
                 **kwds
             )
+
+    @classmethod
+    def constrain_theta(cls, *args, **kwds):
+        return constrain_thetas(*args, **kwds)
 
     def inverse(self, z):
         clip = 1.0e-6
