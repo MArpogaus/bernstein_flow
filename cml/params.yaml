@@ -6,4 +6,4 @@ bimodal:
    shift_data: true
    support: null
    allow_values_outside_support: false
-  scale_data: true
+  scale_data_to_domain: false

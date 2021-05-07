@@ -5,7 +5,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2021-03-22 16:42:31 (Marcel Arpogaus)
-# changed : 2021-05-07 17:01:01 (Marcel Arpogaus)
+# changed : 2021-05-07 17:37:31 (Marcel Arpogaus)
 # DESCRIPTION ##################################################################
 # ...
 # LICENSE ######################################################################
@@ -183,7 +183,7 @@ def run(params, metrics_path, artifact_path):
     test_t, test_y = gen_test_data(5, 200)
     test_x = np.unique(test_t)
 
-    if params.get("scale_data", False):
+    if params.get("scale_data_to_domain", False):
         min_y, max_y = train_y.min(), train_y.max()
         train_y = scale_data(train_y, min_y, max_y)
         val_y = scale_data(val_y, min_y, max_y)
