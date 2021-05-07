@@ -26,27 +26,27 @@ jobs:
               echo '# Bimodal Model' >> report.md
               
               echo '## Learning Curve' >> report.md
-              cml-publish bm_data.png --md >> report.md
+              cml-publish artifacts/bimodal/bm_data.png --md >> report.md
               
               echo '## Learning Curve' >> report.md
-              cml-publish metrics/bm_hist.png --md >> report.md
+              cml-publish artifacts/bimodal/bm_hist.png --md >> report.md
 
               echo '## Metrics' >> report.md
-              cat metrics/bm_metrics.txt >> report.md
+              cat metrics/bimodal/bm_metrics.yaml >> report.md
               
               echo '## Results' >> report.md
-              cml-publish metrics/bm_dists.png --md >> report.md
+              cml-publish artifacts/bimodal/bm_dists.png --md >> report.md
 
               echo '## Parameter Vector for x = 1' >> report.md
-              cat metrics/bm_pvector.txt >> report.md
+              cat artifacts/bimodal/bm_pvector.txt >> report.md
 
               echo '## Flow' >> report.md
-              cml-publish metrics/bm_flow.png --md >> report.md
-              cml-publish metrics/bm_bijectors.png --md >> report.md
-              cml-publish metrics/bm_trafo.png --md >> report.md
+              cml-publish artifacts/bimodal/bm_flow.png --md >> report.md
+              cml-publish artifacts/bimodal/bm_bijectors.png --md >> report.md
+              cml-publish artifacts/bimodal/bm_trafo.png --md >> report.md
 
               echo '## Bijector' >> report.md
-              cml-publish metrics/bm_bijector.png --md >> report.md
-              cml-publish metrics/bm_ildj.png --md >> report.md
+              cml-publish artifacts/bimodal/bm_bijector.png --md >> report.md
+              cml-publish artifacts/bimodal/bm_ildj.png --md >> report.md
 
               cml-send-comment report.md

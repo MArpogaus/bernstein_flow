@@ -1,0 +1,9 @@
+bimodal:
+  fit_kwds:
+   bernstein_order: 20
+   scale_base_distribution: true 
+   scale_data: true
+   shift_data: true
+   support: null
+   allow_values_outside_support: false
+  scale_data: true
