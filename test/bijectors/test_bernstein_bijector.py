@@ -29,30 +29,19 @@
 ###############################################################################
 
 # REQUIRED PYTHON MODULES #####################################################
-import numpy as np
 import tensorflow as tf
 
 from bernstein_flow.bijectors import BernsteinBijector
 
 
 class BernsteinBijectorTest(tf.test.TestCase):
+    def test_inverse(self, batch_shape=[], x_shape=[100], order=10):
+        thetas = BernsteinBijector.constrain_theta(tf.ones(batch_shape + [order]))
+        print(thetas)
+        eps = 1.0e-2
+        x = tf.random.uniform(x_shape, eps, 1.0 - eps)
 
-    def test_inverse(self,
-                     batch_shape=[],
-                     x_shape=[100],
-                     order=10):
-        theta = BernsteinBijector.constrain_theta(
-            np.ones(batch_shape + [order]).astype(np.float32)
-        )
-        print(theta)
-        x = np.float32(np.random.uniform(
-            0 + 1E-2,
-            1 - 1E-2,
-            x_shape))
-
-        bb = BernsteinBijector(
-            theta=theta
-        )
+        bb = BernsteinBijector(thetas=thetas)
 
         forward_x = bb.forward(x)
         # Use identity to invalidate cache.
@@ -61,21 +50,17 @@ class BernsteinBijectorTest(tf.test.TestCase):
 
         fldj = bb.forward_log_det_jacobian(x, event_ndims=1)
         # Use identity to invalidate cache.
-        ildj = bb.inverse_log_det_jacobian(
-            tf.identity(forward_x), event_ndims=1)
+        ildj = bb.inverse_log_det_jacobian(tf.identity(forward_x), event_ndims=1)
 
         self.assertAllClose(x, inverse_x, rtol=1e-5, atol=1e-4)
         self.assertAllClose(forward_x, forward_inverse_x, rtol=1e-5, atol=1e-4)
-        self.assertAllClose(ildj, -fldj, rtol=1e-5, atol=0.)
+        self.assertAllClose(ildj, -fldj, rtol=1e-5, atol=0.0)
 
     def test_inverse_batched(self):
-        self.test_inverse(batch_shape=[2],
-                          x_shape=[100, 2])
+        self.test_inverse(batch_shape=[2], x_shape=[100, 2])
 
     def test_inverse_batched_multi(self):
-        self.test_inverse(batch_shape=[2, 4],
-                          x_shape=[100, 2, 4])
+        self.test_inverse(batch_shape=[2, 4], x_shape=[100, 2, 4])
 
     def test_inverse_batched_multi_huge(self):
-        self.test_inverse(batch_shape=[16, 48],
-                          x_shape=[100, 16, 48])
+        self.test_inverse(batch_shape=[16, 48], x_shape=[100, 16, 48])

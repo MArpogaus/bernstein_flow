@@ -35,7 +35,7 @@ from tensorflow_probability import bijectors as tfb
 from tensorflow_probability import distributions as tfd
 
 from bernstein_flow.bijectors import BernsteinBijector
-from bernstein_flow.bijectors.bernstein_bijector import constrain_thetas
+from bernstein_flow.bijectors.bernstein import constrain_thetas
 
 from tensorflow_probability.python.internal import dtype_util
 from tensorflow_probability.python.internal import prefer_static

@@ -92,7 +92,7 @@ class BernsteinBijector(tfb.Bijector):
 
     def __init__(
         self,
-        theta: tf.Tensor,
+        thetas: tf.Tensor,
         validate_args: bool = False,
         name: str = "bernstein_bijector",
     ):
@@ -109,11 +109,11 @@ class BernsteinBijector(tfb.Bijector):
         :type       name:           str
         """
         with tf.name_scope(name) as name:
-            dtype = dtype_util.common_dtype([theta], dtype_hint=tf.float32)
+            dtype = dtype_util.common_dtype([thetas], dtype_hint=tf.float32)
 
-            self.theta = tensor_util.convert_nonref_to_tensor(theta, dtype=dtype)
+            self.thetas = tensor_util.convert_nonref_to_tensor(thetas, dtype=dtype)
 
-            shape = prefer_static.shape(self.theta)
+            shape = prefer_static.shape(self.thetas)
             self.order = shape[-1]
             self.batch_shape = shape[:-1]
 
@@ -154,8 +154,8 @@ class BernsteinBijector(tfb.Bijector):
         z_fit = self.forward(y_fit[tuple(shape)])
         z_fit = z_fit.numpy().reshape(n_points, -1)
 
-        self.z_min = np.min(z_fit, axis=0)
-        self.z_max = np.max(z_fit, axis=0)
+        self.z_min_interp = np.min(z_fit, axis=0)
+        self.z_max_interp = np.max(z_fit, axis=0)
 
         ips = [
             interp.interp1d(
@@ -170,7 +170,7 @@ class BernsteinBijector(tfb.Bijector):
 
         def ifn(z):
             y = []
-            z_clip = np.clip(z, self.z_min, self.z_max)
+            z_clip = np.clip(z, self.z_min_interp, self.z_max_interp)
             for i, ip in enumerate(ips):
                 y.append(ip(z_clip[..., i]).astype(np.float32))
             y = np.stack(y, axis=-1)
@@ -225,7 +225,7 @@ class BernsteinBijector(tfb.Bijector):
 
         y = tf.clip_by_value(y, 0, 1.0)
         by = self.beta_dist_h.prob(y)
-        z = tf.reduce_mean(by * self.theta, axis=-1)
+        z = tf.reduce_mean(by * self.thetas, axis=-1)
 
         return self.reshape_out(sample_shape, z)
 
@@ -235,7 +235,7 @@ class BernsteinBijector(tfb.Bijector):
 
         y = tf.clip_by_value(y, 0, 1.0)
         by = self.beta_dist_h_dash.prob(y)
-        dtheta = self.theta[..., 1:] - self.theta[..., 0:-1]
+        dtheta = self.thetas[..., 1:] - self.thetas[..., 0:-1]
         ldj = tf.math.log(tf.reduce_sum(by * dtheta, axis=-1))
 
         return self.reshape_out(sample_shape, ldj)
@@ -245,4 +245,4 @@ class BernsteinBijector(tfb.Bijector):
         return constrain_thetas(*args, **kwds)
 
     def _is_increasing(self, **kwargs):
-        return tf.reduce_all(self.theta[..., 1:] >= self.theta[..., :-1])
+        return tf.reduce_all(self.thetas[..., 1:] >= self.thetas[..., :-1])

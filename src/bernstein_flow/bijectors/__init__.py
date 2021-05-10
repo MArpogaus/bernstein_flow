@@ -1,1 +1,1 @@
-from .bernstein_bijector import BernsteinBijector
+from .bernstein import BernsteinBijector
