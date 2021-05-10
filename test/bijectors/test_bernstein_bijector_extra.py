@@ -29,21 +29,23 @@
 ###############################################################################
 
 # REQUIRED PYTHON MODULES #####################################################
-import numpy as np
+from functools import partial
 import tensorflow as tf
-
+import tensorflow_probability as tfp
 from bernstein_flow.bijectors import (
     BernsteinBijectorLinearExtrapolate as BernsteinBijector,
 )
 
+from bernstein_flow.bijectors.bernstein import constrain_thetas
+
+
+tf.random.set_seed(42)
+
 
 class BernsteinBijectorTest(tf.test.TestCase):
     def test_inverse(self, batch_shape=[], x_shape=[100], order=10):
-        thetas = BernsteinBijector.constrain_theta(
-            np.ones(batch_shape + [order]).astype(np.float32)
-        )
-        print(thetas)
-        x = np.float32(np.random.uniform(0 + 1e-2, 1 - 1e-2, x_shape))
+        thetas = constrain_thetas(tf.ones(batch_shape + [order]), low=-3, high=3)
+        x = tf.random.uniform(x_shape, -1.0, 2.0)
 
         bb = BernsteinBijector(thetas=thetas)
 
@@ -59,6 +61,25 @@ class BernsteinBijectorTest(tf.test.TestCase):
         self.assertAllClose(x, inverse_x, rtol=1e-5, atol=1e-4)
         self.assertAllClose(forward_x, forward_inverse_x, rtol=1e-5, atol=1e-4)
         self.assertAllClose(ildj, -fldj, rtol=1e-5, atol=0.0)
+
+        values = tf.concat([0.0, 1.0], 0)
+        shape = [-1] + (tf.rank(thetas) - 1) * [tf.newaxis]
+        [value, grad] = tfp.math.value_and_gradient(bb.forward, values[shape])
+        self.assertAllInRange(value, thetas.dtype.min, thetas.dtype.max)
+        self.assertAllInRange(grad, thetas.dtype.min, thetas.dtype.max)
+        [value, grad] = tfp.math.value_and_gradient(bb.inverse, values[shape])
+        self.assertAllInRange(value, thetas.dtype.min, thetas.dtype.max)
+        self.assertAllInRange(grad, thetas.dtype.min, thetas.dtype.max)
+        [value, grad] = tfp.math.value_and_gradient(
+            partial(bb.forward_log_det_jacobian, event_ndims=0), values[shape]
+        )
+        self.assertAllInRange(value, thetas.dtype.min, thetas.dtype.max)
+        self.assertAllInRange(grad, thetas.dtype.min, thetas.dtype.max)
+        [value, grad] = tfp.math.value_and_gradient(
+            partial(bb.inverse_log_det_jacobian, event_ndims=0), values[shape]
+        )
+        self.assertAllInRange(value, thetas.dtype.min, thetas.dtype.max)
+        self.assertAllInRange(grad, thetas.dtype.min, thetas.dtype.max)
 
     def test_inverse_batched(self):
         self.test_inverse(batch_shape=[2], x_shape=[100, 2])
