@@ -1,1 +1,2 @@
 from .bernstein import BernsteinBijector
+from .bernstein_extra import BernsteinBijectorLinearExtrapolate

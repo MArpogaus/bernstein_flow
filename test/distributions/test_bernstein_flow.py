@@ -34,6 +34,7 @@ import tensorflow as tf
 from tensorflow_probability import distributions as tfd
 
 from bernstein_flow.distributions import BernsteinFlow
+from bernstein_flow.bijectors import BernsteinBijectorLinearExtrapolate
 
 tf.random.set_seed(42)
 
@@ -115,6 +116,22 @@ class BernsteinFlowTest(tf.test.TestCase):
 
     def test_dist_multi(self):
         normal_dist, trans_dist = self.gen_dist(batch_shape=[32, 48])
+        self.f(normal_dist, trans_dist)
+
+    def test_dist_batch_extra(self):
+        normal_dist, trans_dist = self.gen_dist(
+            batch_shape=[32],
+            bb_class=BernsteinBijectorLinearExtrapolate,
+            clip_to_bernstein_domain=False,
+        )
+        self.f(normal_dist, trans_dist)
+
+    def test_dist_multi_extra(self):
+        normal_dist, trans_dist = self.gen_dist(
+            batch_shape=[32],
+            bb_class=BernsteinBijectorLinearExtrapolate,
+            clip_to_bernstein_domain=False,
+        )
         self.f(normal_dist, trans_dist)
 
     def test_log_normal(self):
