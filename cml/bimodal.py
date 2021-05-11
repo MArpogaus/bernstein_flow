@@ -5,7 +5,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2021-03-22 16:42:31 (Marcel Arpogaus)
-# changed : 2021-05-07 17:37:31 (Marcel Arpogaus)
+# changed : 2021-05-10 18:14:28 (Marcel Arpogaus)
 # DESCRIPTION ##################################################################
 # ...
 # LICENSE ######################################################################
@@ -13,7 +13,6 @@
 ################################################################################
 import argparse
 import os
-import sys
 from functools import partial
 
 import matplotlib.pyplot as plt
@@ -174,25 +173,36 @@ def plot_dists(model, bf, test_x, test_t, test_y):
     return fig
 
 
-def run(params, metrics_path, artifact_path):
+def prepare_data(n=100, scale_data_to_domain=False):
     # Data
-    n = 100 if args._10sec else 4000
     train_x, train_y = gen_train_data(n=n)
     val_x, val_y = gen_train_data(n=n // 10)
     train_x.shape, train_y.shape, val_x.shape, val_y.shape
-    test_t, test_y = gen_test_data(5, 200)
-    test_x = np.unique(test_t)
+    test_x, test_y = gen_test_data(5, 200)
 
-    if params.get("scale_data_to_domain", False):
+    if scale_data_to_domain:
         min_y, max_y = train_y.min(), train_y.max()
         train_y = scale_data(train_y, min_y, max_y)
         val_y = scale_data(val_y, min_y, max_y)
         test_y = scale_data(test_y, min_y, max_y)
 
-    # Fit Model
-    model, bf, hist = fit_model(train_x, train_y, val_x, val_y, **params["fit_kwds"])
+    return (train_x, train_y), (val_x, val_y), (test_x, test_y)
 
-    # Results
+
+def results(
+    model,
+    bf,
+    hist,
+    train_x,
+    train_y,
+    val_x,
+    val_y,
+    test_x,
+    test_y,
+    test_t,
+    metrics_path,
+    artifacts_path,
+):
     fig = plt.figure(figsize=(16, 8))
     plt.scatter(train_x, train_y, alpha=0.5, label="train")
     plt.scatter(test_t, test_y, alpha=0.5, label="test")
@@ -217,7 +227,7 @@ def run(params, metrics_path, artifact_path):
 
     flow = bf(model(tf.ones((1, 1))))
 
-    with open(os.path.join(artifact_path, "bm_pvector.txt"), "w") as pvector:
+    with open(os.path.join(artifacts_path, "bm_pvector.txt"), "w") as pvector:
         pvector.write(print_param(flow))
 
     fig = vizualize_flow_from_z_domain(flow)
@@ -239,6 +249,34 @@ def run(params, metrics_path, artifact_path):
 
     fig = plot_value_and_gradient(fun, y.copy())
     fig.savefig(os.path.join(artifacts_path, "bm_ildj.png"))
+
+
+def run(params, metrics_path, artifacts_path):
+    (train_x, train_y), (val_x, val_y), (test_t, test_y) = prepare_data(
+        params.get("data_points", 4000), params.get("scale_data_to_domain", False)
+    )
+    test_x = np.unique(test_t)
+
+    # Fit Model
+    model, bf, hist = fit_model(train_x, train_y, val_x, val_y, **params["fit_kwds"])
+
+    # Results
+    results(
+        model,
+        bf,
+        hist,
+        train_x,
+        train_y,
+        val_x,
+        val_y,
+        test_x,
+        test_y,
+        test_t,
+        metrics_path,
+        artifacts_path,
+    )
+
+    return model, bf, hist
 
 
 if __name__ == "__main__":
@@ -274,6 +312,7 @@ if __name__ == "__main__":
 
     if args._10sec:
         params["fit_kwds"].update({"epochs": 1})
+        params["data_points"] = 100
 
     if USE_MLFLOW and not args.no_mlflow:
         print("mlflow tracking enabled")
