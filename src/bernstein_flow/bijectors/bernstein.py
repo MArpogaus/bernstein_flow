@@ -29,16 +29,16 @@
 ###############################################################################
 
 # REQUIRED PYTHON MODULES #####################################################
+from functools import partial
+
 import tensorflow as tf
 import tensorflow_probability as tfp
-
 from tensorflow_probability import distributions as tfd
-
-from tensorflow_probability.python.internal import dtype_util
-from tensorflow_probability.python.internal import tensor_util
-from tensorflow_probability.python.internal import prefer_static
-
-from functools import partial
+from tensorflow_probability.python.internal import (
+    dtype_util,
+    prefer_static,
+    tensor_util,
+)
 
 
 def gen_beta_dist_h(order, dtype=tf.float32):
@@ -65,7 +65,7 @@ def bernstein_polynom_jacobean(theta):
     beta_dist_h_dash = gen_beta_dist_h_dash(order, theta.dtype)
 
     def b_poly_dash(y):
-        y = tf.clip_by_value(y, 0, 1.0)
+        # y = tf.clip_by_value(y, 0, 1.0)
         by = beta_dist_h_dash.prob(y)
         dtheta = theta[..., 1:] - theta[..., 0:-1]
 
@@ -103,10 +103,10 @@ def bernstein_polynom(theta):
 
 def constrain_thetas(
     thetas_unconstrained: tf.Tensor,
-    high=tf.constant(5.0, name="high"),
-    low=tf.constant(-5.0, name="low"),
+    high=tf.constant(3.0, name="high"),
+    low=tf.constant(-3.0, name="low"),
     allow_values_outside_support=False,
-    eps=1e-4,
+    eps=1e-12,
     fn=tf.math.softmax,
 ) -> tf.Tensor:
     """Ensures monotone increasing Bernstein coefficients.
@@ -125,8 +125,8 @@ def constrain_thetas(
     """
     with tf.name_scope("constrain_theta"):
         if allow_values_outside_support:
-            low -= fn(thetas_unconstrained[..., :1], name="low") + eps
-            high += fn(thetas_unconstrained[..., -1:], name="high") + eps
+            low -= fn(thetas_unconstrained[..., :1], name="low")
+            high += fn(thetas_unconstrained[..., -1:], name="high")
             d = fn(thetas_unconstrained[..., 1:-1]) + eps
         else:
             d = fn(thetas_unconstrained) + eps
@@ -136,6 +136,7 @@ def constrain_thetas(
             (
                 low * tf.ones_like(thetas_unconstrained[..., :1]),
                 d,
+                # fn(thetas_unconstrained[..., -1:], name="high")
             ),
             axis=-1,
         )
@@ -164,27 +165,16 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
         with tf.name_scope(name) as name:
             dtype = dtype_util.common_dtype([thetas], dtype_hint=tf.float32)
 
-            self.theta = tensor_util.convert_nonref_to_tensor(thetas, dtype=dtype)
+            self.thetas = tensor_util.convert_nonref_to_tensor(thetas, dtype=dtype)
 
-            theta_shape = prefer_static.shape(self.theta)
+            theta_shape = prefer_static.shape(self.thetas)
             self.order = theta_shape[-1]
 
-            self.z_min = tf.math.reduce_min(thetas, axis=-1)
-            self.z_max = tf.math.reduce_max(thetas, axis=-1)
+            self.z_min = tf.math.reduce_min(self.thetas, axis=-1)
+            self.z_max = tf.math.reduce_max(self.thetas, axis=-1)
 
-            b_poly = bernstein_polynom(thetas)
-
-            def ldj(y):
-                sample_shape = prefer_static.shape(y)
-                batch_shape = theta_shape[:-1]
-
-                y = y[..., tf.newaxis]
-
-                dz_dy = bernstein_polynom_jacobean(thetas)(y)
-                ldj = tf.math.log(dz_dy)
-                return reshape_out(batch_shape, sample_shape, ldj)
-
-            self._forward_log_det_jacobian = ldj
+            b_poly = bernstein_polynom(self.thetas)
+            self._bernstein_polynom_jacobean = bernstein_polynom_jacobean(self.thetas)
 
             # clip = 1.0e-9
             domain_constraint_fn = partial(
@@ -219,11 +209,22 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
     def constrain_theta(cls, *args, **kwds):
         return constrain_thetas(*args, **kwds)
 
-    def inverse(self, z):
-        clip = 1.0e-6
-        # z=tf.clip_by_value(z, self.z_min + clip, self.z_max-clip)
-        y = super().inverse(z)
-        return tf.clip_by_value(y, clip, 1.0 - clip)
+    def _forward_log_det_jacobian(self, y):
+        theta_shape = prefer_static.shape(self.thetas)
+        sample_shape = prefer_static.shape(y)
+        batch_shape = theta_shape[:-1]
+
+        y = y[..., tf.newaxis]
+
+        dz_dy = self._bernstein_polynom_jacobean(y)
+        ldj = tf.math.log(dz_dy)
+        return reshape_out(batch_shape, sample_shape, ldj)
+
+    # def inverse(self, z):
+    #     clip = 1.0e-6
+    #     # z=tf.clip_by_value(z, self.z_min + clip, self.z_max-clip)
+    #     y = super().inverse(z)
+    #     return tf.clip_by_value(y, clip, 1.0 - clip)
 
     def _is_increasing(self, **kwargs):
-        return tf.reduce_all(self.theta[..., 1:] >= self.theta[..., :-1])
+        return tf.reduce_all(self.thetas[..., 1:] >= self.thetas[..., :-1])
