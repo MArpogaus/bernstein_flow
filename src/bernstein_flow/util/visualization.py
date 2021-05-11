@@ -165,60 +165,64 @@ def plot_x_trafo(flow, xmin=-1, xmax=1, n=20, size=3):
         connectionstyle="arc3,rad=-0.08",
     )
     num_bij = len(flow.bijector.bijector.bijectors)
-    fig, ax = plt.subplots(
+    fig, axs = plt.subplots(
         2, num_bij, figsize=(size * num_bij, size * 2), constrained_layout=True
     )
     fig.suptitle("y-Transformations", fontsize=16)
 
     for i, b in enumerate(reversed(flow.bijector.bijector.bijectors)):
         y = b.forward(x)
-        ax[0, i].scatter(x, y)
-        ax[0, i].set_title(
-            b.name.replace("_", " ").title().replace("Bernsteinflow", "")
-        )
-        if i == 0:
-            ax[0, i].set_xlabel(f"$y$")
+        if num_bij > 1:
+            ax = axs[0, i]
         else:
-            ax[0, i].set_xlabel(f"$z_{i-1}$")
+            ax = axs[0]
+        ax.scatter(x, y)
+        ax.set_title(b.name.replace("_", " ").title().replace("Bernsteinflow", ""))
+        if i == 0:
+            ax.set_xlabel(f"$y$")
+        else:
+            ax.set_xlabel(f"$z_{i-1}$")
 
             con = ConnectionPatch(
                 xyA=[x_old[pos], y_old[pos]],
                 coordsA=ax_old.transData,
                 xyB=[y_old[pos], y[pos]],
-                coordsB=ax[0, i].transData,
+                coordsB=ax.transData,
                 **con_kwds,
             )
 
             fig.add_artist(con)
-        ax[0, i].set_ylabel(f"$z_{i}$")
+        ax.set_ylabel(f"$z_{i}$")
         y_old = y
         x_old = x
-        ax_old = ax[0, i]
+        ax_old = ax
         x = y
     for i, b in enumerate(flow.bijector.bijector.bijectors):
-        x = b.inverse(tf.identity(y))
-        ax[1, num_bij - i - 1].scatter(x, y)
-        ax[1, num_bij - i - 1].set_title(
-            b.name.replace("_", " ").title().replace("Bernsteinflow", "")
-        )
-        if num_bij - i - 1 == 0:
-            ax[1, num_bij - i - 1].set_xlabel(f"$y$")
+        if num_bij > 1:
+            ax = axs[1, num_bij - i - 1]
         else:
-            ax[1, num_bij - i - 1].set_xlabel(f"$z_{num_bij - i - 2}$")
+            ax = axs[1]
+        x = b.inverse(tf.identity(y))
+        ax.scatter(x, y)
+        ax.set_title(b.name.replace("_", " ").title().replace("Bernsteinflow", ""))
+        if num_bij - i - 1 == 0:
+            ax.set_xlabel(f"$y$")
+        else:
+            ax.set_xlabel(f"$z_{num_bij - i - 2}$")
         con = ConnectionPatch(
             xyA=[x_old[pos], y_old[pos]],
             coordsA=ax_old.transData,
             xyB=[x[pos], y[pos]],
-            coordsB=ax[1, num_bij - i - 1].transData,
+            coordsB=ax.transData,
             **con_kwds,
         )
 
         fig.add_artist(con)
 
-        ax[1, num_bij - i - 1].set_ylabel(f"$z_{num_bij - i - 1}$")
+        ax.set_ylabel(f"$z_{num_bij - i - 1}$")
         y_old = y
         x_old = x
-        ax_old = ax[1, num_bij - i - 1]
+        ax_old = ax
         y = x
     return fig
 
