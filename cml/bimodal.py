@@ -5,7 +5,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2021-03-22 16:42:31 (Marcel Arpogaus)
-# changed : 2021-05-10 18:14:28 (Marcel Arpogaus)
+# changed : 2021-05-11 12:21:53 (Marcel Arpogaus)
 # DESCRIPTION ##################################################################
 # ...
 # LICENSE ######################################################################
@@ -260,21 +260,24 @@ def run(params, metrics_path, artifacts_path):
     # Fit Model
     model, bf, hist = fit_model(train_x, train_y, val_x, val_y, **params["fit_kwds"])
 
-    # Results
-    results(
-        model,
-        bf,
-        hist,
-        train_x,
-        train_y,
-        val_x,
-        val_y,
-        test_x,
-        test_y,
-        test_t,
-        metrics_path,
-        artifacts_path,
-    )
+    if not (
+        np.isnan(hist.history["loss"]).any() or np.isnan(hist.history["val_loss"]).any()
+    ):
+        # Results
+        results(
+            model,
+            bf,
+            hist,
+            train_x,
+            train_y,
+            val_x,
+            val_y,
+            test_x,
+            test_y,
+            test_t,
+            metrics_path,
+            artifacts_path,
+        )
 
     return model, bf, hist
 
