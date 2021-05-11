@@ -5,7 +5,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2021-05-10 17:59:17 (Marcel Arpogaus)
-# changed : 2021-05-11 12:28:31 (Marcel Arpogaus)
+# changed : 2021-05-11 16:38:43 (Marcel Arpogaus)
 # DESCRIPTION #################################################################
 # ...
 # LICENSE #####################################################################
@@ -61,7 +61,7 @@ if __name__ == "__main__":
         os.makedirs(artifacts_path)
 
     common_fit_kwds = {
-        "bernstein_order": 20,
+        "output_shape": 20,
         "scale_data": hp.choice("scale_data", [True, False]),
         "shift_data": hp.choice("shift_data", [True, False]),
         "scale_base_distribution": hp.choice("scale_base_distribution", [True, False]),
@@ -107,7 +107,7 @@ if __name__ == "__main__":
             dict(filter(lambda kw: not isinstance(kw[1], dict), params.items()))
         )
         mlflow.log_params(params["fit_kwds"])
-        model, bf, hist = run(params, metrics_path, artifacts_path)
+        model, bf, hist = run(args.seed, params, metrics_path, artifacts_path)
         mlflow.log_artifacts(artifacts_path)
 
         loss = min(hist.history["val_loss"])

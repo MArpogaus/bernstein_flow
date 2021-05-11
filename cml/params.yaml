@@ -1,6 +1,6 @@
 bimodal:
   fit_kwds:
-   bernstein_order: 20
+   output_shape: 20
    scale_base_distribution: true 
    scale_data: true
    shift_data: true

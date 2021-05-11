@@ -5,7 +5,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2021-03-22 16:42:31 (Marcel Arpogaus)
-# changed : 2021-05-11 12:21:53 (Marcel Arpogaus)
+# changed : 2021-05-11 18:49:13 (Marcel Arpogaus)
 # DESCRIPTION ##################################################################
 # ...
 # LICENSE ######################################################################
@@ -99,11 +99,7 @@ def gen_train_data(n=100):
     return gen_data(t)
 
 
-def gen_model(bernstein_order=9, **kwds):
-    tf.random.set_seed(1)
-    output_shape = 2 + bernstein_order
-    if kwds.get("second_affine_trafo", True):
-        output_shape += 1
+def gen_model(output_shape=9, **kwds):
 
     flow_parameter_model = Sequential(
         [
@@ -251,7 +247,13 @@ def results(
     fig.savefig(os.path.join(artifacts_path, "bm_ildj.png"))
 
 
-def run(params, metrics_path, artifacts_path):
+def set_seed(seed):
+    np.random.seed(seed)
+    tf.random.set_seed(seed)
+
+
+def run(seed, params, metrics_path, artifacts_path):
+    set_seed(seed)
     (train_x, train_y), (val_x, val_y), (test_t, test_y) = prepare_data(
         params.get("data_points", 4000), params.get("scale_data_to_domain", False)
     )
@@ -296,11 +298,9 @@ if __name__ == "__main__":
     parser.add_argument("--seed", help="random seed", default=1, type=int)
 
     args = parser.parse_args()
-    params = yaml.safe_load(open("cml/params.yaml"))["bimodal"]
+    params = yaml.load(open("cml/params.yaml"), Loader=yaml.Loader)["bimodal"]
 
     # Ensure Reproducibility
-    np.random.seed(args.seed)
-    tf.random.set_seed(args.seed)
     print("TFP Version", tfp.__version__)
     print("TF  Version", tf.__version__)
 
@@ -332,7 +332,7 @@ if __name__ == "__main__":
                 dict(filter(lambda kw: not isinstance(kw[1], dict), params.items()))
             )
             mlflow.log_params(params["fit_kwds"])
-            run(params, metrics_path, artifacts_path)
+            run(args.seed, params, metrics_path, artifacts_path)
             mlflow.log_artifacts(artifacts_path)
     else:
-        run(params, metrics_path, artifacts_path)
+        run(args.seed, params, metrics_path, artifacts_path)
