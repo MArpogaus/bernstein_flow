@@ -30,16 +30,16 @@
 
 # REQUIRED PYTHON MODULES #####################################################
 import tensorflow as tf
-
 from tensorflow_probability import bijectors as tfb
 from tensorflow_probability import distributions as tfd
+from tensorflow_probability.python.internal import (
+    dtype_util,
+    prefer_static,
+    tensor_util,
+)
 
 from bernstein_flow.bijectors import BernsteinBijector
 from bernstein_flow.bijectors.bernstein import constrain_thetas
-
-from tensorflow_probability.python.internal import dtype_util
-from tensorflow_probability.python.internal import prefer_static
-from tensorflow_probability.python.internal import tensor_util
 
 
 def slice_parameter_vector(pvector: tf.Tensor, p_spec: dict = None) -> dict:
@@ -116,6 +116,76 @@ def apply_activation(
         return result
 
 
+def init_bijectors(
+    thetas,
+    a1=None,
+    b1=None,
+    a2=None,
+    clip_to_bernstein_domain=True,
+    clip_base_distribution=False,
+    bb_class=BernsteinBijector,
+) -> tfb.Bijector:
+    """
+    Builds a normalizing flow using a Bernstein polynomial as Bijector.
+
+    :param      a1:     The scale of f1.
+    :type       a1:     Tensor
+    :param      b1:     The shift of f1.
+    :type       b1:     Tensor
+    :param      theta:  The Bernstein coefficients.
+    :type       theta:  Tensor
+    :param      a2:     The scale of f3.
+    :type       a2:     Tensor
+    :param      b2:     The shift of f3.
+    :type       b2:     Tensor
+    :param      name:   The name to give Ops created by the initializer.
+    :type       name:   string
+
+    :returns:   The Bernstein flow.
+    :rtype:     Bijector
+    """
+    with tf.name_scope("init_bijectors"):
+        bijectors = []
+
+        # f1: ŷ = sigma(a1(x)*y - b1(x))
+        if tf.is_tensor(a1):
+            f1_scale = tfb.Scale(a1, name="scale1")
+            bijectors.append(f1_scale)
+        if tf.is_tensor(b1):
+            f1_shift = tfb.Shift(b1, name="shift1")
+            bijectors.append(f1_shift)
+
+        # clip to domain [0, 1]
+        if clip_to_bernstein_domain:
+            bijectors.append(tfb.Sigmoid(name="sigmoid"))
+
+        # f2: ẑ = Bernstein Polynomial
+        f2 = bb_class(thetas, name="bpoly")
+        bijectors.append(f2)
+
+        # clip to range [min(theta), max(theta)]
+        if clip_base_distribution:
+            bijectors.append(
+                tfb.Invert(
+                    tfb.SoftClip(
+                        high=tf.math.reduce_max(thetas, axis=-1),
+                        low=tf.math.reduce_min(thetas, axis=-1),
+                        hinge_softness=0.5,
+                        name="soft_clip_base_distribution",
+                    )
+                )
+            )
+
+        # f3: z = a2(x)*ẑ - b2(x)
+        if tf.is_tensor(a2):
+            f3_scale = tfb.Scale(a2, name="scale2")
+            bijectors.append(f3_scale)
+
+        bijectors = list(reversed(bijectors))
+
+        return tfb.Invert(tfb.Chain(bijectors))
+
+
 class BernsteinFlow(tfd.TransformedDistribution):
     """
     This class implements a `tfd.TransformedDistribution` using Bernstein
@@ -130,6 +200,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
         a2=None,
         base_distribution=None,
         clip_to_bernstein_domain=True,
+        clip_base_distribution=False,
         bb_class=BernsteinBijector,
         name="BernsteinFlow",
     ) -> tfd.Distribution:
@@ -154,12 +225,13 @@ class BernsteinFlow(tfd.TransformedDistribution):
             if base_distribution is None:
                 base_distribution = tfd.Normal(loc=tf.zeros(shape[:-1]), scale=1.0)
 
-            bijector = self.init_bijectors(
+            bijector = init_bijectors(
                 thetas,
                 a1=a1,
                 b1=b1,
                 a2=a2,
                 clip_to_bernstein_domain=clip_to_bernstein_domain,
+                clip_base_distribution=clip_base_distribution,
                 bb_class=bb_class,
             )
 
@@ -214,62 +286,6 @@ class BernsteinFlow(tfd.TransformedDistribution):
                 ),
                 **kwds
             )
-
-    def init_bijectors(
-        self,
-        thetas,
-        a1=None,
-        b1=None,
-        a2=None,
-        clip_to_bernstein_domain=True,
-        bb_class=BernsteinBijector,
-    ) -> tfb.Bijector:
-        """
-        Builds a normalizing flow using a Bernstein polynomial as Bijector.
-
-        :param      a1:     The scale of f1.
-        :type       a1:     Tensor
-        :param      b1:     The shift of f1.
-        :type       b1:     Tensor
-        :param      theta:  The Bernstein coefficients.
-        :type       theta:  Tensor
-        :param      a2:     The scale of f3.
-        :type       a2:     Tensor
-        :param      b2:     The shift of f3.
-        :type       b2:     Tensor
-        :param      name:   The name to give Ops created by the initializer.
-        :type       name:   string
-
-        :returns:   The Bernstein flow.
-        :rtype:     Bijector
-        """
-        with tf.name_scope("init_bijectors"):
-            bijectors = []
-
-            # f1: ŷ = sigma(a1(x)*y - b1(x))
-            if tf.is_tensor(a1):
-                f1_scale = tfb.Scale(a1, name="scale1")
-                bijectors.append(f1_scale)
-            if tf.is_tensor(b1):
-                f1_shift = tfb.Shift(b1, name="shift1")
-                bijectors.append(f1_shift)
-
-            # clip to domain [0, 1]
-            if clip_to_bernstein_domain:
-                bijectors.append(tfb.Sigmoid(name="sigmoid"))
-
-            # f2: ẑ = Bernstein Polynomial
-            f2 = bb_class(thetas, name="bpoly")
-            bijectors.append(f2)
-
-            # f3: z = a2(x)*ẑ - b2(x)
-            if tf.is_tensor(a2):
-                f3_scale = tfb.Scale(a2, name="scale2")
-                bijectors.append(f3_scale)
-
-            bijectors = list(reversed(bijectors))
-
-            return tfb.Invert(tfb.Chain(bijectors))
 
     def _mean(self):
         samples = self.sample(10000)
