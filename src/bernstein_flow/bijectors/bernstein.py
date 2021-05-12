@@ -106,7 +106,7 @@ def constrain_thetas(
     high=tf.constant(3.0, name="high"),
     low=tf.constant(-3.0, name="low"),
     allow_values_outside_support=False,
-    eps=1e-12,
+    eps=1e-5,
     fn=tf.math.softmax,
 ) -> tf.Tensor:
     """Ensures monotone increasing Bernstein coefficients.
