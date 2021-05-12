@@ -27,16 +27,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ###############################################################################
-
 # REQUIRED PYTHON MODULES #####################################################
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-from matplotlib.patches import ConnectionPatch
 
+import matplotlib.gridspec as gridspec
+
+import matplotlib.pyplot as plt
+import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
-
-import numpy as np
+from matplotlib.patches import ConnectionPatch
 
 
 # function definitions ########################################################
@@ -170,6 +169,9 @@ def plot_x_trafo(flow, xmin=-1, xmax=1, n=20, size=3):
     )
     fig.suptitle("y-Transformations", fontsize=16)
 
+    x_old = None
+    y_old = None
+    ax_old = None
     for i, b in enumerate(reversed(flow.bijector.bijector.bijectors)):
         y = b.forward(x)
         if num_bij > 1:
@@ -179,7 +181,7 @@ def plot_x_trafo(flow, xmin=-1, xmax=1, n=20, size=3):
         ax.scatter(x, y)
         ax.set_title(b.name.replace("_", " ").title().replace("Bernsteinflow", ""))
         if i == 0:
-            ax.set_xlabel(f"$y$")
+            ax.set_xlabel("$y$")
         else:
             ax.set_xlabel(f"$z_{i-1}$")
 
@@ -206,7 +208,7 @@ def plot_x_trafo(flow, xmin=-1, xmax=1, n=20, size=3):
         ax.scatter(x, y)
         ax.set_title(b.name.replace("_", " ").title().replace("Bernsteinflow", ""))
         if num_bij - i - 1 == 0:
-            ax.set_xlabel(f"$y$")
+            ax.set_xlabel("$y$")
         else:
             ax.set_xlabel(f"$z_{num_bij - i - 2}$")
         con = ConnectionPatch(
