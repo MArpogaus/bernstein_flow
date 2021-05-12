@@ -67,13 +67,15 @@ def slice_parameter_vector(pvector: tf.Tensor, p_spec: dict = None) -> dict:
         parameters = {}
         offset = 0
         for name, length in p_spec.items():
-            p = pvector[..., offset : (offset + length)]
+            # fmt: off
+            p = pvector[..., offset:(offset + length)]
+            # fmt: on
             offset += length
             parameters[name] = tf.squeeze(p, name=name)
         return parameters
 
 
-def ensure_positive(x: tf.Tensor, min_value: float = 1e-8, name: str = None):
+def ensure_positive(x: tf.Tensor, min_value: float = 1e-2, name: str = None):
     """Activation function wich ensures that all given values are positive <= min_value.
 
     :param x: Tensor to evaluate the function on.
