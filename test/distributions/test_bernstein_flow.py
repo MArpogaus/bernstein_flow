@@ -196,7 +196,7 @@ class BernsteinFlowTest(tf.test.TestCase):
             bf = BernsteinFlow(
                 [1, 1] + 5 * [-1000] + (o - 4) * [1] + 5 * [-1000] + [1, 1, 1],
             )
-            n = tfd.Normal(loc=tf.zeros((1)), scale=tf.ones((1)))
+            n = tfd.Normal(loc=0.0, scale=1.0)
             self.f(n, bf)
 
     def test_random_numbers(self):
