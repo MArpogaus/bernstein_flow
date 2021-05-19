@@ -57,7 +57,7 @@ class BernsteinBijectorTest(tf.test.TestCase):
         ildj = bb.inverse_log_det_jacobian(tf.identity(forward_x), event_ndims=1)
 
         self.assertAllClose(x, inverse_x, rtol=1e-5, atol=1e-7)
-        self.assertAllClose(forward_x, forward_inverse_x, rtol=1e-6, atol=1e-7)
+        self.assertAllClose(forward_x, forward_inverse_x, rtol=1e-5, atol=1e-6)
         self.assertAllClose(ildj, -fldj, rtol=1e-5, atol=1e-7)
 
     def test_inverse_batched(self):

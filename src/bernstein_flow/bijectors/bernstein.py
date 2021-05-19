@@ -199,7 +199,7 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
                     low=self.z_min,
                     high=self.z_max,
                     position_tolerance=1e-7,
-                    value_tolerance=1e-5,
+                    # value_tolerance=1e-7,
                     max_iterations=max_iterations,
                 )
                 return estimated_root, objective_at_estimated_root, iteration
