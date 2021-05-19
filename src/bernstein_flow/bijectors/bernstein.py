@@ -107,7 +107,7 @@ def constrain_thetas(
     low=tf.constant(-3.0, name="low"),
     allow_values_outside_support=False,
     eps=1e-5,
-    fn=tf.math.softmax,
+    fn=tf.math.softplus,
 ) -> tf.Tensor:
     """Ensures monotone increasing Bernstein coefficients.
 
@@ -136,7 +136,6 @@ def constrain_thetas(
             (
                 low * tf.ones_like(thetas_unconstrained[..., :1]),
                 d,
-                # fn(thetas_unconstrained[..., -1:], name="high")
             ),
             axis=-1,
         )
@@ -149,7 +148,13 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
     transformations of a `Distribution` sample.
     """
 
-    def __init__(self, thetas: tf.Tensor, name: str = "bernstein_bijector", **kwds):
+    def __init__(
+        self,
+        thetas: tf.Tensor,
+        clip_inverse=1.0e-6,
+        name: str = "bernstein_bijector",
+        **kwds
+    ):
         """
         Constructs a new instance of a Bernstein polynomial bijector.
 
@@ -166,6 +171,9 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
             dtype = dtype_util.common_dtype([thetas], dtype_hint=tf.float32)
 
             self.thetas = tensor_util.convert_nonref_to_tensor(thetas, dtype=dtype)
+            self.clip_inverse = tensor_util.convert_nonref_to_tensor(
+                clip_inverse, dtype=dtype
+            )
 
             theta_shape = prefer_static.shape(self.thetas)
             self.order = theta_shape[-1]
@@ -190,9 +198,9 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
                     objective_fn,
                     low=self.z_min,
                     high=self.z_max,
-                    position_tolerance=1e-8,
-                    # value_tolerance=1e-6,
-                    max_iterations=max_iterations - 1,
+                    position_tolerance=1e-7,
+                    value_tolerance=1e-5,
+                    max_iterations=max_iterations,
                 )
                 return estimated_root, objective_at_estimated_root, iteration
 
@@ -200,7 +208,7 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
                 fn=b_poly,
                 domain_constraint_fn=domain_constraint_fn,
                 root_search_fn=root_search_fn,
-                max_iterations=20,
+                max_iterations=40,
                 name=name,
                 **kwds
             )
@@ -220,11 +228,9 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
         ldj = tf.math.log(dz_dy)
         return reshape_out(batch_shape, sample_shape, ldj)
 
-    # def inverse(self, z):
-    #     clip = 1.0e-6
-    #     # z=tf.clip_by_value(z, self.z_min + clip, self.z_max-clip)
-    #     y = super().inverse(z)
-    #     return tf.clip_by_value(y, clip, 1.0 - clip)
+    def inverse(self, z):
+        y = super().inverse(z)
+        return tf.clip_by_value(y, self.clip_inverse, 1.0 - self.clip_inverse)
 
     def _is_increasing(self, **kwargs):
         return tf.reduce_all(self.thetas[..., 1:] >= self.thetas[..., :-1])
