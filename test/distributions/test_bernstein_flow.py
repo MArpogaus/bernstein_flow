@@ -151,7 +151,7 @@ class BernsteinFlowTest(tf.test.TestCase):
         normal_dist, trans_dist = self.gen_dist(
             batch_shape=batch_shape,
             base_distribution=logistic,
-            support=(-6, 6),
+            support=(-8, 8),
             scale_base_distribution=True,
             allow_values_outside_support=True,
         )
@@ -193,15 +193,14 @@ class BernsteinFlowTest(tf.test.TestCase):
 
     def test_small_numbers(self):
         for o in [5, 20, 2000]:
-            bf = BernsteinFlow(
+            bf = BernsteinFlow.from_pvector(
                 [1, 1] + 5 * [-1000] + (o - 4) * [1] + 5 * [-1000] + [1, 1, 1],
             )
-            n = tfd.Normal(loc=tf.zeros((1)), scale=tf.ones((1)))
+            n = tfd.Normal(loc=0.0, scale=1.0)
             self.f(n, bf)
 
     def test_random_numbers(self):
-        for bs in [[1], [32], [32, 48]]:
+        for bs in [[2], [32], [32, 48]]:
             for _ in range(10):
-                bf = BernsteinFlow(self.gen_pvs(bs, 50))
-                n = tfd.Normal(loc=tf.zeros(bs), scale=tf.ones(bs))
-                self.f(n, bf)
+                normal_dist, trans_dist = self.gen_dist(batch_shape=bs)
+                self.f(normal_dist, trans_dist)
