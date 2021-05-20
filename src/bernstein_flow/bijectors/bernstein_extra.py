@@ -4,7 +4,7 @@ from . import BernsteinBijector
 
 class BernsteinBijectorLinearExtrapolate(BernsteinBijector):
     def __init__(self, *args, **kwds):
-        super().__init__(*args, **kwds)
+        super().__init__(*args, clip_inverse=0.0, **kwds)
         # save slope on boundaries for interpolation
         self.z_min = tf.math.reduce_min(self.thetas, axis=-1)
         self.z_max = tf.math.reduce_max(self.thetas, axis=-1)
@@ -45,7 +45,7 @@ class BernsteinBijectorLinearExtrapolate(BernsteinBijector):
         ldj = tf.where(y >= 1.0, self.ldj1, ldj)
         return ldj
 
-    def _inverse(self, z: tf.Tensor) -> tf.Tensor:
+    def inverse(self, z: tf.Tensor, **kwds) -> tf.Tensor:
         """
         Returns the inverse Bijector evaluation.
 
@@ -55,7 +55,9 @@ class BernsteinBijectorLinearExtrapolate(BernsteinBijector):
         :returns:   The inverse Bijector evaluation.
         :rtype:     Tensor
         """
-        y = super()._inverse(tf.where((z <= self.z_min) | (z >= self.z_max), 0.0, z))
+        y = super().inverse(
+            tf.where((z <= self.z_min) | (z >= self.z_max), 0.0, z), **kwds
+        )
         return self._extrapolate_inverse(z, y)
 
     def _forward(self, y: tf.Tensor) -> tf.Tensor:

@@ -49,7 +49,6 @@ def constrain_thetas(
     low=tf.constant(-3.0, name="low"),
     allow_values_outside_support=False,
     eps=1e-4,
-    fn=tf.math.softmax,
 ) -> tf.Tensor:
     """Ensures monotone increasing Bernstein coefficients.
 
@@ -67,11 +66,11 @@ def constrain_thetas(
     """
     with tf.name_scope("constrain_theta"):
         if allow_values_outside_support:
-            low -= fn(thetas_unconstrained[..., :1], name="low")
-            high += fn(thetas_unconstrained[..., -1:], name="high")
-            d = fn(thetas_unconstrained[..., 1:-1]) + eps
+            low -= tf.math.softplus(thetas_unconstrained[..., :1], name="low")
+            high += tf.math.softplus(thetas_unconstrained[..., -1:], name="high")
+            d = tf.math.softmax(thetas_unconstrained[..., 1:-1]) + eps
         else:
-            d = fn(thetas_unconstrained) + eps
+            d = tf.math.softmax(thetas_unconstrained) + eps
         d /= tf.reduce_sum(d, axis=-1)[..., None]
         d *= high - low
         tc = tf.concat(
@@ -93,6 +92,7 @@ class BernsteinBijector(tfb.Bijector):
     def __init__(
         self,
         thetas: tf.Tensor,
+        clip_inverse=1e-6,
         validate_args: bool = False,
         name: str = "bernstein_bijector",
     ):
@@ -112,6 +112,9 @@ class BernsteinBijector(tfb.Bijector):
             dtype = dtype_util.common_dtype([thetas], dtype_hint=tf.float32)
 
             self.thetas = tensor_util.convert_nonref_to_tensor(thetas, dtype=dtype)
+            self.clip_inverse = tensor_util.convert_nonref_to_tensor(
+                clip_inverse, dtype=dtype
+            )
 
             shape = prefer_static.shape(self.thetas)
             self.order = shape[-1]
@@ -148,8 +151,9 @@ class BernsteinBijector(tfb.Bijector):
         rank = tensorshape_util.rank(self.batch_shape)
         shape = [...] + [tf.newaxis] * rank
 
-        clip = 1e-7
-        y_fit = np.linspace(clip, 1 - clip, n_points, dtype=np.float32)
+        y_fit = np.linspace(
+            self.clip_inverse, 1 - self.clip_inverse, n_points, dtype=np.float32
+        )
 
         z_fit = self.forward(y_fit[tuple(shape)])
         z_fit = z_fit.numpy().reshape(n_points, -1)
