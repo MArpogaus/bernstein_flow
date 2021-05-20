@@ -13,40 +13,40 @@ jobs:
 
       - uses: actions/setup-python@v2
         with:
-          python-version: '3.8'
+          python-version: "3.8"
 
       - name: cml
         env:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
         run: |
-              pip install .
-              pip install pandas
-              python cml/bimodal.py
+          pip install .
+          pip install pandas pyyaml
+          python cml/bimodal.py
 
-              echo '# Bimodal Model' >> report.md
-              
-              echo '## Learning Curve' >> report.md
-              cml-publish artifacts/bimodal/bm_data.png --md >> report.md
-              
-              echo '## Learning Curve' >> report.md
-              cml-publish artifacts/bimodal/bm_hist.png --md >> report.md
+          echo '# Bimodal Model' >> report.md
 
-              echo '## Metrics' >> report.md
-              cat metrics/bimodal/bm_metrics.yaml >> report.md
-              
-              echo '## Results' >> report.md
-              cml-publish artifacts/bimodal/bm_dists.png --md >> report.md
+          echo '## Learning Curve' >> report.md
+          cml-publish artifacts/bimodal/bm_data.png --md >> report.md
 
-              echo '## Parameter Vector for x = 1' >> report.md
-              cat artifacts/bimodal/bm_pvector.txt >> report.md
+          echo '## Learning Curve' >> report.md
+          cml-publish artifacts/bimodal/bm_hist.png --md >> report.md
 
-              echo '## Flow' >> report.md
-              cml-publish artifacts/bimodal/bm_flow.png --md >> report.md
-              cml-publish artifacts/bimodal/bm_bijectors.png --md >> report.md
-              cml-publish artifacts/bimodal/bm_trafo.png --md >> report.md
+          echo '## Metrics' >> report.md
+          cat metrics/bimodal/bm_metrics.yaml >> report.md
 
-              echo '## Bijector' >> report.md
-              cml-publish artifacts/bimodal/bm_bijector.png --md >> report.md
-              cml-publish artifacts/bimodal/bm_ildj.png --md >> report.md
+          echo '## Results' >> report.md
+          cml-publish artifacts/bimodal/bm_dists.png --md >> report.md
 
-              cml-send-comment report.md
+          echo '## Parameter Vector for x = 1' >> report.md
+          cat artifacts/bimodal/bm_pvector.txt >> report.md
+
+          echo '## Flow' >> report.md
+          cml-publish artifacts/bimodal/bm_flow.png --md >> report.md
+          cml-publish artifacts/bimodal/bm_bijectors.png --md >> report.md
+          cml-publish artifacts/bimodal/bm_trafo.png --md >> report.md
+
+          echo '## Bijector' >> report.md
+          cml-publish artifacts/bimodal/bm_bijector.png --md >> report.md
+          cml-publish artifacts/bimodal/bm_ildj.png --md >> report.md
+
+          cml-send-comment report.md
