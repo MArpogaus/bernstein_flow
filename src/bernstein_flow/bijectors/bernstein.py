@@ -106,7 +106,7 @@ def constrain_thetas(
     high=tf.constant(3.0, name="high"),
     low=tf.constant(-3.0, name="low"),
     allow_values_outside_support=False,
-    eps=1e-6,
+    eps=1e-5,
 ) -> tf.Tensor:
     """Ensures monotone increasing Bernstein coefficients.
 
@@ -197,7 +197,7 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
                     objective_fn,
                     low=self.z_min,
                     high=self.z_max,
-                    position_tolerance=1e-7,
+                    position_tolerance=1e-6,
                     # value_tolerance=1e-7,
                     max_iterations=max_iterations,
                 )
@@ -207,7 +207,7 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
                 fn=b_poly,
                 domain_constraint_fn=domain_constraint_fn,
                 root_search_fn=root_search_fn,
-                max_iterations=40,
+                max_iterations=50,
                 name=name,
                 **kwds
             )
