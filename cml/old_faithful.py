@@ -5,26 +5,22 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2021-03-22 11:14:00 (Marcel Arpogaus)
-# changed : 2021-05-20 18:09:42 (Marcel Arpogaus)
+# changed : 2021-08-06 11:58:12 (Marcel Arpogaus)
 # DESCRIPTION ##################################################################
 # ...
 # LICENSE ######################################################################
 # ...
 ################################################################################
 
-import pandas as pd
-import numpy as np
-
+import os
 
 import matplotlib.pyplot as plt
-
+import numpy as np
+import pandas as pd
 import tensorflow as tf
 import tensorflow_probability as tfp
-
-from tensorflow.keras.layers import Dense, InputLayer
-
 from bernstein_flow.distributions import BernsteinFlow
-
+from tensorflow.keras.layers import Dense, InputLayer
 
 # Ensure Reproducibility
 np.random.seed(2)
@@ -124,7 +120,11 @@ hist = flow_model.fit(
 
 
 # Result
-result_path = "metrics/"
+result_path = "metrics/old_faithful/"
+
+if not os.path.exists(result_path):
+    os.makedirs(result_path)
+
 hist_df = pd.DataFrame(hist.history)
 hist_df.to_csv(result_path + "of_hist.csv")
 fig = hist_df.loss.plot(figsize=(16, 8)).get_figure()
