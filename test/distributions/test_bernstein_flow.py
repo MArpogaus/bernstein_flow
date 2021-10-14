@@ -91,9 +91,6 @@ class BernsteinFlowTest(tf.test.TestCase):
             # check for infs and nans
             self.assertAllInRange(trans_dist.prob(x), 0, trans_dist.dtype.max)
             self.assertAllInRange(
-                trans_dist.mean(), trans_dist.dtype.min, trans_dist.dtype.max
-            )
-            self.assertAllInRange(
                 trans_dist.sample(10000), trans_dist.dtype.min, trans_dist.dtype.max
             )
             try:

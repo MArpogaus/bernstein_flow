@@ -238,9 +238,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
             )
 
             super().__init__(
-                distribution=base_distribution,
-                bijector=bijector,
-                name=name,
+                distribution=base_distribution, bijector=bijector, name=name,
             )
 
     @classmethod
@@ -288,7 +286,3 @@ class BernsteinFlow(tfd.TransformedDistribution):
                 ),
                 **kwds
             )
-
-    def _mean(self):
-        samples = self.sample(10000)
-        return tf.math.reduce_mean(samples, axis=0)
