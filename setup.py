@@ -6,8 +6,8 @@ setup(
     packages=find_packages("src"),
     package_dir={"": "src"},
     install_requires=[
-        "tensorflow==2.5.*",
-        "tensorflow_probability==0.13.*",
+        "tensorflow==2.6.*",
+        "tensorflow_probability==0.14.*",
         "scipy==1.7.*",
         "matplotlib",
         "seaborn",
