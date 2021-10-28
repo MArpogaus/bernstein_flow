@@ -1,3 +1,1 @@
-Min of loss: -0.6634572744369507
-Mean of data: 0.57680637
-Mean of Distribution: [0.5758374]
+Min of loss: -0.6639983654022217

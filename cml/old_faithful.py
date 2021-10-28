@@ -5,7 +5,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2021-03-22 11:14:00 (Marcel Arpogaus)
-# changed : 2021-08-06 11:58:12 (Marcel Arpogaus)
+# changed : 2021-10-28 18:52:51 (Marcel Arpogaus)
 # DESCRIPTION ##################################################################
 # ...
 # LICENSE ######################################################################
@@ -143,8 +143,6 @@ fig.savefig(result_path + "of_dist.png")
 
 with open(result_path + "of_metrics.txt", "w") as metrics:
     metrics.write("Min of loss: " + str(hist_df.loss.min()) + "\n")
-    metrics.write("Mean of data: " + str(np.mean(y)) + "\n")
-    metrics.write("Mean of Distribution: " + str(flow.mean().numpy().flatten()) + "\n")
 
 a2 = flow.bijector.bijector.bijectors[0].scale
 thetas = flow.bijector.bijector.bijectors[1].thetas
