@@ -56,7 +56,7 @@ class BernsteinBijectorLinearExtrapolate(BernsteinBijector):
         :rtype:     Tensor
         """
         y = super().inverse(
-            tf.where((z <= self.z_min) | (z >= self.z_max), 0.0, z), **kwds
+            tf.where((z <= self.z_min) | (z >= self.z_max), tf.zeros_like(z), z), **kwds
         )
         return self._extrapolate_inverse(z, y)
 
@@ -79,7 +79,9 @@ class BernsteinBijectorLinearExtrapolate(BernsteinBijector):
         return z
 
     def _forward_log_det_jacobian(self, y):
-        ldj = super()._forward_log_det_jacobian(tf.where((y <= 0) | (y >= 1), 0.0, y))
+        ldj = super()._forward_log_det_jacobian(
+            tf.where((y <= 0) | (y >= 1), tf.zeros_like(y), y)
+        )
         ldj = self._extrapolate_forward_log_det_jacobian(y, ldj)
 
         return ldj

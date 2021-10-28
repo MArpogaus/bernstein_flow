@@ -30,20 +30,21 @@
 
 # REQUIRED PYTHON MODULES #####################################################
 import tensorflow as tf
-
 from bernstein_flow.bijectors import BernsteinBijector
 from bernstein_flow.bijectors.bernstein import constrain_thetas
-
+from tensorflow_probability.python.internal import test_util
 
 tf.random.set_seed(42)
 
 
+@test_util.test_all_tf_execution_regimes
 class BernsteinBijectorTest(tf.test.TestCase):
-    def test_inverse(self, batch_shape=[], x_shape=[100], order=10):
-        thetas = constrain_thetas(tf.ones(batch_shape + [order]), low=-3, high=3)
-        print(thetas)
+    def f(self, batch_shape=[], x_shape=[100], order=10, dtype=tf.float32):
+        thetas = constrain_thetas(
+            tf.ones(batch_shape + [order], dtype=dtype), low=-3, high=3
+        )
         eps = 1e-2
-        x = tf.random.uniform(x_shape, eps, 1.0 - eps)
+        x = tf.random.uniform(x_shape, eps, 1.0 - eps, dtype=dtype)
 
         bb = BernsteinBijector(thetas=thetas)
 
@@ -60,11 +61,26 @@ class BernsteinBijectorTest(tf.test.TestCase):
         self.assertAllClose(forward_x, forward_inverse_x, rtol=1e-5, atol=1e-6)
         self.assertAllClose(ildj, -fldj, rtol=1e-5, atol=1e-7)
 
-    def test_inverse_batched(self):
-        self.test_inverse(batch_shape=[2], x_shape=[100, 2])
+    def test_inverse_float32(self):
+        self.f(batch_shape=[], x_shape=[100], order=10, dtype=tf.float32)
 
-    def test_inverse_batched_multi(self):
-        self.test_inverse(batch_shape=[2, 4], x_shape=[100, 2, 4])
+    def test_inverse_batched_float32(self):
+        self.f(batch_shape=[2], x_shape=[100, 2], order=10, dtype=tf.float32)
 
-    def test_inverse_batched_multi_huge(self):
-        self.test_inverse(batch_shape=[16, 48], x_shape=[100, 16, 48])
+    def test_inverse_batched_multi_float32(self):
+        self.f(batch_shape=[2, 4], x_shape=[100, 2, 4], order=10, dtype=tf.float32)
+
+    def test_inverse_batched_multi_huge_float32(self):
+        self.f(batch_shape=[16, 48], x_shape=[100, 16, 48], order=10, dtype=tf.float32)
+
+    def test_inverse_float64(self):
+        self.f(batch_shape=[], x_shape=[100], order=10, dtype=tf.float64)
+
+    def test_inverse_batched_float64(self):
+        self.f(batch_shape=[2], x_shape=[100, 2], order=10, dtype=tf.float64)
+
+    def test_inverse_batched_multi_float64(self):
+        self.f(batch_shape=[2, 4], x_shape=[100, 2, 4], order=10, dtype=tf.float64)
+
+    def test_inverse_batched_multi_huge_float64(self):
+        self.f(batch_shape=[16, 48], x_shape=[100, 16, 48], order=10, dtype=tf.float64)

@@ -30,6 +30,7 @@
 
 # REQUIRED PYTHON MODULES #####################################################
 import tensorflow as tf
+import tensorflow_probability as tfp
 from tensorflow_probability import bijectors as tfb
 from tensorflow_probability import distributions as tfd
 from tensorflow_probability.python.internal import (
@@ -92,12 +93,15 @@ def ensure_positive(x: tf.Tensor, min_value: float = 1e-2, name: str = None):
 
 
 def apply_activation(
-    thetas, a1=None, b1=None, a2=None, support=None, allow_values_outside_support=False
+    thetas,
+    a1=None,
+    b1=None,
+    a2=None,
+    low=None,
+    high=None,
+    allow_values_outside_support=False,
 ):
     with tf.name_scope("apply_activation"):
-        if support is None:
-            support = (tf.constant(-4.0, name="low"), tf.constant(4.0, name="high"))
-        low, high = support
         result = {}
         if tf.is_tensor(a1):
             result["a1"] = ensure_positive(a1, name="a1")
@@ -105,8 +109,6 @@ def apply_activation(
             result["b1"] = tf.identity(b1, name="b1")
         if tf.is_tensor(a2):
             result["a2"] = ensure_positive(a2, min_value=1.0, name="a2")
-            low *= result["a2"][..., tf.newaxis]
-            high *= result["a2"][..., tf.newaxis]
 
         result["thetas"] = constrain_thetas(
             thetas_unconstrained=thetas,
@@ -196,7 +198,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
 
     def __init__(
         self,
-        thetas: tf.Tensor,
+        thetas,
         a1=None,
         b1=None,
         a2=None,
@@ -207,6 +209,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
         name="BernsteinFlow",
     ) -> tfd.Distribution:
         with tf.name_scope(name) as name:
+            parameters = dict(locals())
             dtype = dtype_util.common_dtype([thetas, a1, b1, a2], dtype_hint=tf.float32)
 
             thetas = tensor_util.convert_nonref_to_tensor(
@@ -225,7 +228,9 @@ class BernsteinFlow(tfd.TransformedDistribution):
             shape = prefer_static.shape(thetas)
 
             if base_distribution is None:
-                base_distribution = tfd.Normal(loc=tf.zeros(shape[:-1]), scale=1.0)
+                base_distribution = tfd.Normal(
+                    loc=tf.zeros(shape[:-1], dtype=dtype), scale=1.0
+                )
 
             bijector = init_bijectors(
                 thetas,
@@ -238,8 +243,23 @@ class BernsteinFlow(tfd.TransformedDistribution):
             )
 
             super().__init__(
-                distribution=base_distribution, bijector=bijector, name=name,
+                distribution=base_distribution,
+                bijector=bijector,
+                name=name,
             )
+
+            self._parameters = parameters
+
+    def _parameter_properties(self, dtype=None, num_classes=None):
+        # Annotations may optionally specify properties, such as `event_ndims`,
+        # `default_constraining_bijector_fn`, `specifies_shape`, etc.; see
+        # the `ParameterProperties` documentation for details.
+        return dict(
+            theta=tfp.util.ParameterProperties(),
+            b1=tfp.util.ParameterProperties(),
+            a2=tfp.util.ParameterProperties(),
+            a1=tfp.util.ParameterProperties(),
+        )
 
     @classmethod
     def from_pvector(
@@ -248,8 +268,9 @@ class BernsteinFlow(tfd.TransformedDistribution):
         scale_data=True,
         shift_data=True,
         scale_base_distribution=True,
-        support=None,
         allow_values_outside_support=False,
+        low=None,
+        high=None,
         **kwds
     ):
         with tf.name_scope("from_pvector"):
@@ -281,7 +302,8 @@ class BernsteinFlow(tfd.TransformedDistribution):
             return cls(
                 **apply_activation(
                     **slice_parameter_vector(pvector, p_spec),
-                    support=support,
+                    low=low,
+                    high=high,
                     allow_values_outside_support=allow_values_outside_support
                 ),
                 **kwds

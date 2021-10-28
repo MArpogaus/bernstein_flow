@@ -29,6 +29,7 @@
 ###############################################################################
 
 # REQUIRED PYTHON MODULES #####################################################
+import unittest
 import tensorflow as tf
 
 from tensorflow_probability import distributions as tfd
@@ -36,29 +37,37 @@ from tensorflow_probability import distributions as tfd
 from bernstein_flow.distributions import BernsteinFlow
 from bernstein_flow.bijectors import BernsteinBijectorLinearExtrapolate
 
+from tensorflow_probability.python.internal import test_util
+
 tf.random.set_seed(42)
 
 
+def gen_pvs(batch_shape, order, dtype):
+    return tf.random.uniform(
+        shape=batch_shape + [4 + order], minval=-1000, maxval=100, dtype=dtype
+    )
+
+
+def gen_dist(batch_shape, order=5, dtype=tf.float32, **kwds):
+    pvs = gen_pvs(batch_shape, order, dtype=dtype)
+    n = tfd.Normal(
+        loc=tf.zeros(batch_shape, dtype=dtype),
+        scale=tf.ones(batch_shape, dtype=dtype),
+    )
+    bs = BernsteinFlow.from_pvector(pvs, **kwds)
+    return n, bs
+
+
 class BernsteinFlowTest(tf.test.TestCase):
-    def gen_pvs(self, batch_shape, order):
-        return tf.random.uniform(
-            shape=batch_shape + [4 + order], minval=-1000, maxval=100
-        )
-
-    def gen_dist(self, batch_shape, order=5, **kwds):
-        if batch_shape != []:
-            n = tfd.Normal(loc=tf.zeros((batch_shape)), scale=tf.ones((batch_shape)))
-            bs = BernsteinFlow.from_pvector(self.gen_pvs(batch_shape, order), **kwds)
-        else:
-            n = tfd.Normal(loc=tf.zeros((1)), scale=tf.ones((1)))
-            bs = BernsteinFlow.from_pvector(self.gen_pvs(batch_shape, order), **kwds)
-        return n, bs
-
     def f(self, normal_dist, trans_dist):
 
+        dtype = normal_dist.dtype
         for input_shape in [[1], [1, 1], [1] + normal_dist.batch_shape]:
             x = tf.random.uniform(
-                shape=[1000] + normal_dist.batch_shape, minval=-100, maxval=100
+                shape=[100] + normal_dist.batch_shape,
+                minval=-100,
+                maxval=100,
+                dtype=dtype,
             )
 
             # Check the distribution type
@@ -72,8 +81,8 @@ class BernsteinFlowTest(tf.test.TestCase):
                 trans_dist.sample(input_shape).shape,
             )
             self.assertEqual(
-                normal_dist.prob(tf.zeros(input_shape)).shape,
-                trans_dist.prob(tf.zeros(input_shape)).shape,
+                normal_dist.prob(tf.zeros(input_shape, dtype=dtype)).shape,
+                trans_dist.prob(tf.zeros(input_shape, dtype=dtype)).shape,
             )
 
             # check the Normalization
@@ -107,25 +116,33 @@ class BernsteinFlowTest(tf.test.TestCase):
             except NotImplementedError:
                 pass
 
+
+# ref: https://stackoverflow.com/questions/32899
+for dtype in [tf.float32, tf.float64]:
+
     def test_dist_batch(self):
-        normal_dist, trans_dist = self.gen_dist(batch_shape=[32])
+        normal_dist, trans_dist = gen_dist(batch_shape=[32], order=10, dtype=dtype)
         self.f(normal_dist, trans_dist)
 
     def test_dist_multi(self):
-        normal_dist, trans_dist = self.gen_dist(batch_shape=[32, 48])
+        normal_dist, trans_dist = gen_dist(batch_shape=[32, 48], order=10, dtype=dtype)
         self.f(normal_dist, trans_dist)
 
     def test_dist_batch_extra(self):
-        normal_dist, trans_dist = self.gen_dist(
+        normal_dist, trans_dist = gen_dist(
             batch_shape=[32],
+            order=10,
+            dtype=dtype,
             bb_class=BernsteinBijectorLinearExtrapolate,
             clip_to_bernstein_domain=False,
         )
         self.f(normal_dist, trans_dist)
 
     def test_dist_multi_extra(self):
-        normal_dist, trans_dist = self.gen_dist(
+        normal_dist, trans_dist = gen_dist(
             batch_shape=[32],
+            order=10,
+            dtype=dtype,
             bb_class=BernsteinBijectorLinearExtrapolate,
             clip_to_bernstein_domain=False,
         )
@@ -133,22 +150,28 @@ class BernsteinFlowTest(tf.test.TestCase):
 
     def test_log_normal(self):
         batch_shape = [32, 48]
-        log_normal = tfd.LogNormal(loc=tf.zeros(batch_shape), scale=1)
-        normal_dist, trans_dist = self.gen_dist(
+        log_normal = tfd.LogNormal(loc=tf.zeros(batch_shape, dtype=dtype), scale=1.0)
+        normal_dist, trans_dist = gen_dist(
             batch_shape=batch_shape,
+            order=10,
+            dtype=dtype,
             base_distribution=log_normal,
-            support=(1e-10, tf.math.exp(4.0)),
+            low=1e-10,
+            high=tf.math.exp(4.0),
             scale_base_distribution=True,
         )
         self.f(normal_dist, trans_dist)
 
     def test_logistic(self):
         batch_shape = [32, 48]
-        logistic = tfd.Logistic(loc=tf.zeros(batch_shape), scale=1)
-        normal_dist, trans_dist = self.gen_dist(
+        logistic = tfd.Logistic(loc=tf.zeros(batch_shape, dtype=dtype), scale=1)
+        normal_dist, trans_dist = gen_dist(
             batch_shape=batch_shape,
+            order=10,
+            dtype=dtype,
             base_distribution=logistic,
-            support=(-8, 8),
+            low=-8,
+            high=8,
             scale_base_distribution=True,
             allow_values_outside_support=True,
         )
@@ -156,22 +179,30 @@ class BernsteinFlowTest(tf.test.TestCase):
 
     def test_uniform(self):
         batch_shape = [32, 48]
-        uniform = tfd.Uniform(-tf.ones(batch_shape), tf.ones(batch_shape))
-        normal_dist, trans_dist = self.gen_dist(
+        uniform = tfd.Uniform(
+            -tf.ones(batch_shape, dtype=dtype), tf.ones(batch_shape, dtype=dtype)
+        )
+        normal_dist, trans_dist = gen_dist(
             batch_shape=batch_shape,
+            order=10,
+            dtype=dtype,
             base_distribution=uniform,
-            support=(-1.0, 1.0),
+            low=-1.0,
+            high=1.0,
             scale_base_distribution=False,
         )
         self.f(normal_dist, trans_dist)
 
     def test_student_t(self):
         batch_shape = [32, 48]
-        student_t = tfd.StudentT(2, loc=tf.zeros(batch_shape), scale=1)
-        normal_dist, trans_dist = self.gen_dist(
+        student_t = tfd.StudentT(2, loc=tf.zeros(batch_shape, dtype=dtype), scale=1.0)
+        normal_dist, trans_dist = gen_dist(
             batch_shape=batch_shape,
+            order=10,
+            dtype=dtype,
             base_distribution=student_t,
-            support=(-25, 25),
+            low=-25,
+            high=25,
             scale_base_distribution=False,
             allow_values_outside_support=True,
         )
@@ -179,25 +210,52 @@ class BernsteinFlowTest(tf.test.TestCase):
 
     def test_weibull(self):
         batch_shape = [32, 48]
-        weibull = tfd.Weibull(0.5, scale=tf.ones(batch_shape))
-        normal_dist, trans_dist = self.gen_dist(
+        weibull = tfd.Weibull(0.5, scale=tf.ones(batch_shape, dtype=dtype))
+        normal_dist, trans_dist = gen_dist(
             batch_shape=batch_shape,
+            order=10,
+            dtype=dtype,
             base_distribution=weibull,
-            support=(1e-10, 50),
+            low=1e-10,
+            high=50,
             scale_base_distribution=False,
         )
         self.f(normal_dist, trans_dist)
 
     def test_small_numbers(self):
-        for o in [5, 20, 2000]:
-            bf = BernsteinFlow.from_pvector(
-                [1, 1] + 5 * [-1000] + (o - 4) * [1] + 5 * [-1000] + [1, 1, 1],
-            )
-            n = tfd.Normal(loc=0.0, scale=1.0)
-            self.f(n, bf)
+        o = 100
+        bf = BernsteinFlow.from_pvector(
+            [1, 1] + 5 * [-1000] + (o - 4) * [1] + 5 * [-1000] + [1, 1, 1],
+        )
+        n = tfd.Normal(loc=0.0, scale=1.0)
+        self.f(n, bf)
 
     def test_random_numbers(self):
         for bs in [[2], [32], [32, 48]]:
             for _ in range(10):
-                normal_dist, trans_dist = self.gen_dist(batch_shape=bs)
+                normal_dist, trans_dist = gen_dist(
+                    batch_shape=bs, order=10, dtype=dtype
+                )
                 self.f(normal_dist, trans_dist)
+
+    setattr(
+        BernsteinFlowTest,
+        "test_dist_batch_extra_" + dtype.name,
+        test_dist_batch_extra,
+    )
+    setattr(
+        BernsteinFlowTest,
+        "test_dist_multi_extra_" + dtype.name,
+        test_dist_multi_extra,
+    )
+    setattr(BernsteinFlowTest, "test_log_normal_" + dtype.name, test_log_normal)
+    setattr(BernsteinFlowTest, "test_logistic_" + dtype.name, test_logistic)
+    setattr(BernsteinFlowTest, "test_uniform_" + dtype.name, test_uniform)
+    setattr(BernsteinFlowTest, "test_student_t_" + dtype.name, test_student_t)
+    setattr(BernsteinFlowTest, "test_weibull_" + dtype.name, test_weibull)
+    setattr(BernsteinFlowTest, "test_small_numbers_" + dtype.name, test_small_numbers)
+    setattr(BernsteinFlowTest, "test_random_numbers_" + dtype.name, test_random_numbers)
+    setattr(BernsteinFlowTest, "test_dist_multi_" + dtype.name, test_dist_multi)
+    setattr(BernsteinFlowTest, "test_dist_batch_" + dtype.name, test_dist_batch)
+
+BernsteinFlowTest = test_util.test_all_tf_execution_regimes(BernsteinFlowTest)

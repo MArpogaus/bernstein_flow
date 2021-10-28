@@ -103,8 +103,8 @@ def bernstein_polynom(theta):
 
 def constrain_thetas(
     thetas_unconstrained: tf.Tensor,
-    high=tf.constant(3.0, name="high"),
-    low=tf.constant(-3.0, name="low"),
+    high=None,
+    low=None,
     allow_values_outside_support=False,
     eps=1e-5,
 ) -> tf.Tensor:
@@ -122,7 +122,21 @@ def constrain_thetas(
     :rtype:     Tensor
 
     """
+    if not tf.is_tensor(high):
+        high = 4.0
+    if not tf.is_tensor(low):
+        low = -4.0
     with tf.name_scope("constrain_theta"):
+        dtype = dtype_util.common_dtype(
+            [thetas_unconstrained, low, high], dtype_hint=tf.float32
+        )
+
+        thetas_unconstrained = tensor_util.convert_nonref_to_tensor(
+            thetas_unconstrained, name="thetas_unconstrained", dtype=dtype
+        )
+        low = tensor_util.convert_nonref_to_tensor(low, name="low", dtype=dtype)
+        high = tensor_util.convert_nonref_to_tensor(high, name="high", dtype=dtype)
+
         if allow_values_outside_support:
             low -= tf.math.softplus(thetas_unconstrained[..., :1], name="low")
             high += tf.math.softplus(thetas_unconstrained[..., -1:], name="high")
@@ -169,7 +183,9 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
         with tf.name_scope(name) as name:
             dtype = dtype_util.common_dtype([thetas], dtype_hint=tf.float32)
 
-            self.thetas = tensor_util.convert_nonref_to_tensor(thetas, dtype=dtype)
+            self.thetas = tensor_util.convert_nonref_to_tensor(
+                thetas, name="thetas", dtype=dtype
+            )
             self.clip_inverse = tensor_util.convert_nonref_to_tensor(
                 clip_inverse, dtype=dtype
             )
