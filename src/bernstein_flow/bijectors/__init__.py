@@ -1,2 +1,2 @@
-from .bernstein import BernsteinBijector
-from .bernstein_extra import BernsteinBijectorLinearExtrapolate
+from .bernstein import (BernsteinBijector, BernsteinBijectorLinearExtrapolate,
+                        BernsteinBijectorQuadraticExtrapolate)

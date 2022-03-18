@@ -29,15 +29,12 @@
 ###############################################################################
 
 # REQUIRED PYTHON MODULES #####################################################
-import unittest
 import tensorflow as tf
-
 from tensorflow_probability import distributions as tfd
-
-from bernstein_flow.distributions import BernsteinFlow
-from bernstein_flow.bijectors import BernsteinBijectorLinearExtrapolate
-
 from tensorflow_probability.python.internal import test_util
+
+from bernstein_flow.bijectors import BernsteinBijectorLinearExtrapolate
+from bernstein_flow.distributions import BernsteinFlow
 
 tf.random.set_seed(42)
 

@@ -5,7 +5,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2021-05-10 17:59:17 (Marcel Arpogaus)
-# changed : 2021-05-11 16:38:43 (Marcel Arpogaus)
+# changed : 2022-03-10 09:23:19 (Marcel Arpogaus)
 # DESCRIPTION #################################################################
 # ...
 # LICENSE #####################################################################
@@ -21,16 +21,17 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 import tensorflow_probability as tfp
-from bernstein_flow.bijectors import (
-    BernsteinBijector,
-    BernsteinBijectorLinearExtrapolate,
-)
-from hyperopt import STATUS_FAIL, STATUS_OK, Trials, fmin, hp, tpe
-
 from bimodal import run
+from hyperopt import STATUS_FAIL, STATUS_OK, Trials, fmin, hp, tpe
+from tensorflow_probability import distributions as tfd
+
+from bernstein_flow.bijectors.bernstein import (
+    BernsteinBijector, BernsteinBijectorLinearExtrapolate,
+    BernsteinBijectorQuadraticExtrapolate, get_thetas_constraint_fn)
 
 if __name__ == "__main__":
     experiment_name = "hp_bimodal"
+    batch_shape = [32]
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -61,26 +62,63 @@ if __name__ == "__main__":
         os.makedirs(artifacts_path)
 
     common_fit_kwds = {
+        "batch_size": batch_shape[0],
         "output_shape": 20,
-        "scale_data": hp.choice("scale_data", [True, False]),
-        "shift_data": hp.choice("shift_data", [True, False]),
-        "scale_base_distribution": hp.choice("scale_base_distribution", [True, False]),
-        "clip_base_distribution": hp.choice("clip_base_distribution", [True, False]),
-        "allow_values_outside_support": hp.choice(
-            "allow_values_outside_support", [True, False]
-        ),
+        "scale_data": True,
+        "shift_data": True,
+        "clip_base_distribution": False,
     }
     space = {
-        "scale_data_to_domain": hp.choice("scale_data_to_domain", [True, False]),
+        "scale_data_to_domain": False,
         "fit_kwds": hp.choice(
             "bijector_class",
             [
-                dict(bb_class=BernsteinBijector, **common_fit_kwds),
+                dict(
+                    bb_class=BernsteinBijector,
+                    act_thetas_kwds=dict(
+                        compact_support=(0, 1),
+                        allow_values_outside_support=False,
+                        constrain_second_drivative=False,
+                    ),
+                    base_distribution=tfd.Uniform(
+                        tf.convert_to_tensor(0, dtype=tf.float32),
+                        tf.convert_to_tensor(1, dtype=tf.float32),
+                    ),
+                    **common_fit_kwds,
+                    scale_base_distribution=False,
+                ),
                 dict(
                     bb_class=BernsteinBijectorLinearExtrapolate,
-                    clip_to_bernstein_domain=hp.choice(
-                        "clip_to_bernstein_domain", [True, False]
+                    act_thetas_kwds=dict(
+                        compact_support=hp.choice(
+                            "compact_support_linear", [(-3, 3), False]
+                        ),
+                        allow_values_outside_support=hp.choice(
+                            "allow_values_outside_support_linear", [True, False]
+                        ),
+                        constrain_second_drivative="zero",
                     ),
+                    scale_base_distribution=hp.choice(
+                        "scale_base_distribution_linear", [True, False]
+                    ),
+                    clip_to_bernstein_domain=False,
+                    **common_fit_kwds,
+                ),
+                dict(
+                    bb_class=BernsteinBijectorQuadraticExtrapolate,
+                    act_thetas_kwds=dict(
+                        compact_support=hp.choice(
+                            "compact_support_quad", [(-3, 3), False]
+                        ),
+                        allow_values_outside_support=hp.choice(
+                            "allow_values_outside_support_quad", [True, False]
+                        ),
+                        constrain_second_drivative="turn",
+                    ),
+                    scale_base_distribution=hp.choice(
+                        "scale_base_distribution_quad", [True, False]
+                    ),
+                    clip_to_bernstein_domain=False,
                     **common_fit_kwds,
                 ),
             ],
@@ -88,7 +126,7 @@ if __name__ == "__main__":
     }
 
     mlflow.autolog()
-    experiment_id = mlflow.set_experiment(experiment_name)
+    exp = mlflow.set_experiment(experiment_name)
     if os.environ.get("MLFLOW_RUN_ID", False):
         mlflow.start_run()
     else:
@@ -100,20 +138,24 @@ if __name__ == "__main__":
             params["data_points"] = 25
 
         mlflow.start_run(
-            experiment_id=experiment_id, nested=mlflow.active_run() is not None
+            experiment_id=exp.experiment_id, nested=mlflow.active_run() is not None
         )
         mlflow.log_param("seed", args.seed)
+        mlflow.log_params(params["fit_kwds"])
+        act_thetas_kwds = params["fit_kwds"].pop("act_thetas_kwds")
         mlflow.log_params(
             dict(filter(lambda kw: not isinstance(kw[1], dict), params.items()))
         )
-        mlflow.log_params(params["fit_kwds"])
+        mlflow.log_params(act_thetas_kwds)
+        params["fit_kwds"].update(
+            dict(act_thetas=get_thetas_constraint_fn(**act_thetas_kwds))
+        )
         model, bf, hist = run(args.seed, params, metrics_path, artifacts_path)
         mlflow.log_artifacts(artifacts_path)
 
         loss = min(hist.history["val_loss"])
-        flow = bf(model(tf.linspace(0.0, 1.0, 10)[..., None]))
         status = STATUS_OK
-        if np.isnan(loss).any() or np.isnan(flow.mean().numpy()).any():
+        if np.isnan(loss).any():
             status = STATUS_FAIL
         mlflow.end_run("FINISHED" if status == STATUS_OK else "FAILED")
         return {"loss": loss, "status": status}

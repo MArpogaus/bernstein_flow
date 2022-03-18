@@ -33,14 +33,11 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 from tensorflow_probability import bijectors as tfb
 from tensorflow_probability import distributions as tfd
-from tensorflow_probability.python.internal import (
-    dtype_util,
-    prefer_static,
-    tensor_util,
-)
+from tensorflow_probability.python.internal import (dtype_util, prefer_static,
+                                                    tensor_util)
 
+from bernstein_flow.activations import get_thetas_constraint_fn
 from bernstein_flow.bijectors import BernsteinBijector
-from bernstein_flow.bijectors.bernstein import constrain_thetas
 
 
 def slice_parameter_vector(pvector: tf.Tensor, p_spec: dict = None) -> dict:
@@ -88,8 +85,8 @@ def ensure_positive(x: tf.Tensor, min_value: float = 1e-2, name: str = None):
 
     """
     with tf.name_scope("ensure_positive"):
-        scale = tf.math.softplus(x) + min_value
-        return tf.identity(scale, name=name)
+        scale = tf.math.maximum(tf.math.softplus(x), min_value, name=name)
+        return scale
 
 
 def apply_activation(
@@ -97,9 +94,7 @@ def apply_activation(
     a1=None,
     b1=None,
     a2=None,
-    low=None,
-    high=None,
-    allow_values_outside_support=False,
+    act_thetas=None,
 ):
     with tf.name_scope("apply_activation"):
         result = {}
@@ -108,15 +103,12 @@ def apply_activation(
         if tf.is_tensor(b1):
             result["b1"] = tf.identity(b1, name="b1")
         if tf.is_tensor(a2):
-            result["a2"] = ensure_positive(a2, min_value=1.0, name="a2")
+            result["a2"] = ensure_positive(a2, name="a2")
 
-        result["thetas"] = constrain_thetas(
-            thetas_unconstrained=thetas,
-            low=low,
-            high=high,
-            allow_values_outside_support=allow_values_outside_support,
-        )
-
+        if act_thetas == None:
+            result["thetas"] = get_thetas_constraint_fn()(thetas)
+        else:
+            result["thetas"] = act_thetas(thetas)
         return result
 
 
@@ -172,8 +164,8 @@ def init_bijectors(
             bijectors.append(
                 tfb.Invert(
                     tfb.SoftClip(
-                        high=tf.math.reduce_max(thetas, axis=-1),
-                        low=tf.math.reduce_min(thetas, axis=-1),
+                        high=thetas[..., 0],
+                        low=thetas[..., -1],
                         hinge_softness=0.5,
                         name="soft_clip_base_distribution",
                     )
@@ -231,6 +223,10 @@ class BernsteinFlow(tfd.TransformedDistribution):
                 base_distribution = tfd.Normal(
                     loc=tf.zeros(shape[:-1], dtype=dtype), scale=1.0
                 )
+            else:
+                base_distribution = tfd.BatchBroadcast(
+                    base_distribution, to_shape=shape[:-1]
+                )
 
             bijector = init_bijectors(
                 thetas,
@@ -268,9 +264,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
         scale_data=True,
         shift_data=True,
         scale_base_distribution=True,
-        allow_values_outside_support=False,
-        low=None,
-        high=None,
+        act_thetas=None,
         **kwds
     ):
         with tf.name_scope("from_pvector"):
@@ -301,10 +295,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
             p_spec["thetas"] = bernstein_order
             return cls(
                 **apply_activation(
-                    **slice_parameter_vector(pvector, p_spec),
-                    low=low,
-                    high=high,
-                    allow_values_outside_support=allow_values_outside_support
+                    **slice_parameter_vector(pvector, p_spec), act_thetas=act_thetas
                 ),
                 **kwds
             )

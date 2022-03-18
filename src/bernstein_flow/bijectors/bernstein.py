@@ -33,126 +33,19 @@ from functools import partial
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from tensorflow_probability import distributions as tfd
-from tensorflow_probability.python.internal import (
-    dtype_util,
-    prefer_static,
-    tensor_util,
-)
+from tensorflow_probability.python.internal import (dtype_util, prefer_static,
+                                                    tensor_util)
 
-
-def gen_beta_dist_h(order, dtype=tf.float32):
-    return tfd.Beta(
-        tf.range(1, order + 1, dtype=dtype), tf.range(order, 0, -1, dtype=dtype)
-    )
-
-
-def gen_beta_dist_h_dash(order, dtype=tf.float32):
-    return tfd.Beta(
-        tf.range(1, order, dtype=dtype), tf.range(order - 1, 0, -1, dtype=dtype)
-    )
+from bernstein_flow.math.bernstein import (
+    derive_bpoly, gen_bernstein_polynom,
+    gen_bernstein_polynom_with_linear_extrapolation,
+    gen_bernstein_polynom_with_quadratic_extrapolation,
+    gen_bernstein_polynom_with_qubic_extrapolation, get_end_points)
 
 
 def reshape_out(batch_shape, sample_shape, y):
     output_shape = prefer_static.broadcast_shape(sample_shape, batch_shape)
     return tf.reshape(y, output_shape)
-
-
-def bernstein_polynom_jacobean(theta):
-    theta_shape = prefer_static.shape(theta)
-    order = theta_shape[-1]
-
-    beta_dist_h_dash = gen_beta_dist_h_dash(order, theta.dtype)
-
-    def b_poly_dash(y):
-        # y = tf.clip_by_value(y, 0, 1.0)
-        by = beta_dist_h_dash.prob(y)
-        dtheta = theta[..., 1:] - theta[..., 0:-1]
-
-        dz_dy = tf.reduce_sum(by * dtheta, axis=-1)
-
-        return dz_dy
-
-    return b_poly_dash
-
-
-def bernstein_polynom(theta):
-    theta_shape = prefer_static.shape(theta)
-    order = theta_shape[-1]
-    batch_shape = theta_shape[:-1]
-
-    beta_dist_h = gen_beta_dist_h(order, theta.dtype)
-
-    # @tf.custom_gradient
-    def b_poly(y):
-        # def grad_fn(upstream):
-        #     dy_dz = bernstein_polynom_jacobean(theta)(y)
-        #     return upstream * dy_dz
-
-        # y = tf.clip_by_value(y, 0, 1.0)
-        sample_shape = prefer_static.shape(y)
-
-        y = y[..., tf.newaxis]
-        by = beta_dist_h.prob(y)
-        z = tf.reduce_mean(by * theta, axis=-1)
-
-        return reshape_out(batch_shape, sample_shape, z)  # , grad_fn
-
-    return b_poly
-
-
-def constrain_thetas(
-    thetas_unconstrained: tf.Tensor,
-    high=None,
-    low=None,
-    allow_values_outside_support=False,
-    eps=1e-5,
-) -> tf.Tensor:
-    """Ensures monotone increasing Bernstein coefficients.
-
-    :param thetas_unconstrained: Tensor containing the distance of the
-      Bernstein coefficients.
-    :param low: The lower bound.
-    :param high: The upper bound.
-    :param allow_values_outside_support: Use the first and last parameter to
-      increase/decrease the upper/lower bound.
-    :param eps: Optional minimum distance of thetas. Default Value: 1e-8
-    :param fn: Function to ensure positive values.
-    :returns:   Moncton increasing Bernstein coefficients.
-    :rtype:     Tensor
-
-    """
-    if not tf.is_tensor(high):
-        high = 4.0
-    if not tf.is_tensor(low):
-        low = -4.0
-    with tf.name_scope("constrain_theta"):
-        dtype = dtype_util.common_dtype(
-            [thetas_unconstrained, low, high], dtype_hint=tf.float32
-        )
-
-        thetas_unconstrained = tensor_util.convert_nonref_to_tensor(
-            thetas_unconstrained, name="thetas_unconstrained", dtype=dtype
-        )
-        low = tensor_util.convert_nonref_to_tensor(low, name="low", dtype=dtype)
-        high = tensor_util.convert_nonref_to_tensor(high, name="high", dtype=dtype)
-
-        if allow_values_outside_support:
-            low -= tf.math.softplus(thetas_unconstrained[..., :1], name="low")
-            high += tf.math.softplus(thetas_unconstrained[..., -1:], name="high")
-            d = tf.math.softmax(thetas_unconstrained[..., 1:-1]) + eps
-        else:
-            d = tf.math.softmax(thetas_unconstrained) + eps
-        d /= tf.reduce_sum(d, axis=-1)[..., None]
-        d *= high - low
-        tc = tf.concat(
-            (
-                low * tf.ones_like(thetas_unconstrained[..., :1]),
-                d,
-            ),
-            axis=-1,
-        )
-        return tf.cumsum(tc, axis=-1, name="theta")
 
 
 class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInverse):
@@ -166,7 +59,7 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
         thetas: tf.Tensor,
         clip_inverse=1.0e-6,
         name: str = "bernstein_bijector",
-        **kwds
+        **kwds,
     ):
         """
         Constructs a new instance of a Bernstein polynomial bijector.
@@ -191,17 +84,26 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
             )
 
             theta_shape = prefer_static.shape(self.thetas)
-            self.order = theta_shape[-1]
+            batch_shape = theta_shape[:-1]
 
-            self.z_min = tf.math.reduce_min(self.thetas, axis=-1)
-            self.z_max = tf.math.reduce_max(self.thetas, axis=-1)
+            z_min, z_max = get_end_points(self.thetas)
 
-            b_poly = bernstein_polynom(self.thetas)
-            self._bernstein_polynom_jacobean = bernstein_polynom_jacobean(self.thetas)
+            b_poly, self.order = gen_bernstein_polynom(self.thetas)
+
+            def b_boly_reshaped(x):
+                x = tensor_util.convert_nonref_to_tensor(x, name="x", dtype=dtype)
+
+                sample_shape = prefer_static.shape(x)
+
+                y = b_poly(x)
+
+                return reshape_out(batch_shape, sample_shape, y)
 
             # clip = 1.0e-9
             domain_constraint_fn = partial(
-                tf.clip_by_value, clip_value_min=0.0, clip_value_max=1.0
+                tf.clip_by_value,
+                clip_value_min=tf.convert_to_tensor(0, dtype=dtype),
+                clip_value_max=tf.convert_to_tensor(1, dtype=dtype),
             )
 
             def root_search_fn(objective_fn, _, max_iterations=None):
@@ -211,8 +113,8 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
                     iteration,
                 ) = tfp.math.find_root_chandrupatla(
                     objective_fn,
-                    low=self.z_min,
-                    high=self.z_max,
+                    low=z_min,
+                    high=z_max,
                     position_tolerance=1e-6,
                     # value_tolerance=1e-7,
                     max_iterations=max_iterations,
@@ -220,32 +122,153 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
                 return estimated_root, objective_at_estimated_root, iteration
 
             super().__init__(
-                fn=b_poly,
+                fn=b_boly_reshaped,
                 domain_constraint_fn=domain_constraint_fn,
                 root_search_fn=root_search_fn,
                 max_iterations=50,
                 name=name,
-                **kwds
+                dtype=dtype,
+                **kwds,
             )
 
-    @classmethod
-    def constrain_theta(cls, *args, **kwds):
-        return constrain_thetas(*args, **kwds)
-
-    def _forward_log_det_jacobian(self, y):
-        theta_shape = prefer_static.shape(self.thetas)
-        sample_shape = prefer_static.shape(y)
-        batch_shape = theta_shape[:-1]
-
-        y = y[..., tf.newaxis]
-
-        dz_dy = self._bernstein_polynom_jacobean(y)
-        ldj = tf.math.log(dz_dy)
-        return reshape_out(batch_shape, sample_shape, ldj)
-
     def inverse(self, z):
+        z = tensor_util.convert_nonref_to_tensor(z, name="z", dtype=self.dtype)
         y = super().inverse(z)
         return tf.clip_by_value(y, self.clip_inverse, 1.0 - self.clip_inverse)
+
+    def _is_increasing(self, **kwargs):
+        return tf.reduce_all(self.thetas[..., 1:] >= self.thetas[..., :-1])
+
+
+class BernsteinBijectorLinearExtrapolate(
+    tfp.experimental.bijectors.ScalarFunctionWithInferredInverse
+):
+    def __init__(
+        self,
+        thetas: tf.Tensor,
+        name: str = "bernstein_bijector_linear_extrapolate",
+        **kwds,
+    ):
+        """
+        Constructs a new instance of a Bernstein polynomial bijector.
+
+        :param      theta:          The Bernstein coefficients.
+        :type       theta:          Tensor
+        :param      validate_args:  Whether to validate input with asserts.
+                                    Passed to `super()`.
+        :type       validate_args:  bool
+        :param      name:           The name to give Ops created by the
+                                    initializer. Passed to `super()`.
+        :type       name:           str
+        """
+        with tf.name_scope(name) as name:
+            dtype = dtype_util.common_dtype([thetas], dtype_hint=tf.float32)
+
+            self.thetas = tensor_util.convert_nonref_to_tensor(thetas, dtype=dtype)
+
+            theta_shape = prefer_static.shape(self.thetas)
+            batch_shape = theta_shape[:-1]
+
+            b_poly, self.order = gen_bernstein_polynom_with_linear_extrapolation(
+                self.thetas
+            )
+
+            def b_boly_reshaped(x):
+                x = tensor_util.convert_nonref_to_tensor(x, name="x", dtype=dtype)
+                sample_shape = prefer_static.shape(x)
+
+                y = b_poly(x)
+
+                return reshape_out(batch_shape, sample_shape, y)
+
+            def root_search_fn(objective_fn, _, max_iterations=None):
+                (
+                    estimated_root,
+                    objective_at_estimated_root,
+                    iteration,
+                ) = tfp.math.find_root_chandrupatla(
+                    objective_fn,
+                    low=tf.ones(1, dtype=dtype),
+                    # position_tolerance=tf.convert_to_tensor(1e-6, dtype=dtype),
+                    # value_tolerance=1e-7,
+                    max_iterations=max_iterations,
+                )
+                return estimated_root, objective_at_estimated_root, iteration
+
+            super().__init__(
+                fn=b_boly_reshaped,
+                root_search_fn=root_search_fn,
+                max_iterations=50,
+                name=name,
+                dtype=dtype,
+                **kwds,
+            )
+
+    def _is_increasing(self, **kwargs):
+        return tf.reduce_all(self.thetas[..., 1:] >= self.thetas[..., :-1])
+
+
+class BernsteinBijectorQuadraticExtrapolate(
+    tfp.experimental.bijectors.ScalarFunctionWithInferredInverse
+):
+    def __init__(
+        self,
+        thetas: tf.Tensor,
+        name: str = "bernstein_bijector_quadratic_extrapolate",
+        **kwds,
+    ):
+        """
+        Constructs a new instance of a Bernstein polynomial bijector.
+
+        :param      theta:          The Bernstein coefficients.
+        :type       theta:          Tensor
+        :param      validate_args:  Whether to validate input with asserts.
+                                    Passed to `super()`.
+        :type       validate_args:  bool
+        :param      name:           The name to give Ops created by the
+                                    initializer. Passed to `super()`.
+        :type       name:           str
+        """
+        with tf.name_scope(name) as name:
+            dtype = dtype_util.common_dtype([thetas], dtype_hint=tf.float32)
+
+            self.thetas = tensor_util.convert_nonref_to_tensor(thetas, dtype=dtype)
+
+            theta_shape = prefer_static.shape(self.thetas)
+            batch_shape = theta_shape[:-1]
+
+            b_poly, self.order = gen_bernstein_polynom_with_quadratic_extrapolation(
+                self.thetas
+            )
+
+            def b_boly_reshaped(x):
+                x = tensor_util.convert_nonref_to_tensor(x, name="x", dtype=dtype)
+                sample_shape = prefer_static.shape(x)
+
+                y = b_poly(x)
+
+                return reshape_out(batch_shape, sample_shape, y)
+
+            def root_search_fn(objective_fn, _, max_iterations=None):
+                (
+                    estimated_root,
+                    objective_at_estimated_root,
+                    iteration,
+                ) = tfp.math.find_root_chandrupatla(
+                    objective_fn,
+                    position_tolerance=1e-6,
+                    # value_tolerance=1e-7,
+                    max_iterations=max_iterations,
+                )
+                return estimated_root, objective_at_estimated_root, iteration
+
+            super().__init__(
+                fn=b_boly_reshaped,
+                root_search_fn=root_search_fn,
+                max_iterations=50,
+                name=name,
+                **kwds,
+            )
 
     def _is_increasing(self, **kwargs):
         return tf.reduce_all(self.thetas[..., 1:] >= self.thetas[..., :-1])

@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 setup(
     name="bernstein_flow",
@@ -8,6 +8,7 @@ setup(
     install_requires=[
         "tensorflow==2.8.*",
         "tensorflow_probability==0.16.*",
+        "scipy==1.7.*",
         "matplotlib",
         "seaborn",
     ],
