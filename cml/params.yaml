@@ -1,14 +1,14 @@
 bimodal:
   fit_kwds:
     output_shape: 20
-    bb_class: !!python/name:bernstein_flow.bijectors.bernstein.BernsteinBijectorQuadraticExtrapolate
-    act_thetas:
-      !!python/object/apply:bernstein_flow.activations.get_thetas_constraint_fn
+    extrapolation: quadratic
+    thetas_constrain_fn:
+      !!python/object/apply:bernstein_flow.activations.get_thetas_constrain_fn
       kwds:
         allow_values_outside_support: false
         constrain_second_drivative: turn
         # support: false
-        fn: !!python/name:tensorflow.abs
+        # fn: !!python/name:tensorflow.abs
 
     clip_to_bernstein_domain: false
     scale_base_distribution: true

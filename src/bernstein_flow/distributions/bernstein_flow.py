@@ -36,7 +36,7 @@ from tensorflow_probability import distributions as tfd
 from tensorflow_probability.python.internal import (dtype_util, prefer_static,
                                                     tensor_util)
 
-from bernstein_flow.activations import get_thetas_constraint_fn
+from bernstein_flow.activations import get_thetas_constrain_fn
 from bernstein_flow.bijectors import BernsteinBijector
 
 
@@ -94,8 +94,21 @@ def apply_activation(
     a1=None,
     b1=None,
     a2=None,
-    act_thetas=None,
+    thetas_constrain_fn=get_thetas_constrain_fn(),
 ):
+    """Apply activation functions to raw parameters.
+
+    :param thetas:  The Bernstein coefficients.
+    :type thetas:  Tensor
+    :param a1:     The unconstrained scale of f1.
+    :type a1:     Tensor
+    :param b1:     The shift of f1.
+    :type b1:     Tensor
+    :param a2:     The unconstrained scale of f3.
+    :type a2:     Tensor
+    :param thetas_constrain_fn: Function used to constrain the Bernstein coefficients
+
+    """
     with tf.name_scope("apply_activation"):
         result = {}
         if tf.is_tensor(a1):
@@ -105,10 +118,7 @@ def apply_activation(
         if tf.is_tensor(a2):
             result["a2"] = ensure_positive(a2, name="a2")
 
-        if act_thetas == None:
-            result["thetas"] = get_thetas_constraint_fn()(thetas)
-        else:
-            result["thetas"] = act_thetas(thetas)
+        result["thetas"] = thetas_constrain_fn(thetas)
         return result
 
 
@@ -119,7 +129,7 @@ def init_bijectors(
     a2=None,
     clip_to_bernstein_domain=True,
     clip_base_distribution=False,
-    bb_class=BernsteinBijector,
+    **bb_kwds,
 ) -> tfb.Bijector:
     """
     Builds a normalizing flow using a Bernstein polynomial as Bijector.
@@ -156,7 +166,7 @@ def init_bijectors(
             bijectors.append(tfb.Sigmoid(name="sigmoid"))
 
         # f2: ẑ = Bernstein Polynomial
-        f2 = bb_class(thetas, name="bpoly")
+        f2 = BernsteinBijector(thetas, **bb_kwds, name="bpoly")
         bijectors.append(f2)
 
         # clip to range [min(theta), max(theta)]
@@ -197,8 +207,8 @@ class BernsteinFlow(tfd.TransformedDistribution):
         base_distribution=None,
         clip_to_bernstein_domain=True,
         clip_base_distribution=False,
-        bb_class=BernsteinBijector,
         name="BernsteinFlow",
+        **bb_kwds,
     ) -> tfd.Distribution:
         with tf.name_scope(name) as name:
             parameters = dict(locals())
@@ -235,7 +245,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
                 a2=a2,
                 clip_to_bernstein_domain=clip_to_bernstein_domain,
                 clip_base_distribution=clip_base_distribution,
-                bb_class=bb_class,
+                **bb_kwds,
             )
 
             super().__init__(
@@ -264,8 +274,8 @@ class BernsteinFlow(tfd.TransformedDistribution):
         scale_data=True,
         shift_data=True,
         scale_base_distribution=True,
-        act_thetas=None,
-        **kwds
+        thetas_constrain_fn=get_thetas_constrain_fn(),
+        **kwds,
     ):
         with tf.name_scope("from_pvector"):
             dtype = dtype_util.common_dtype([pvector], dtype_hint=tf.float32)
@@ -295,7 +305,8 @@ class BernsteinFlow(tfd.TransformedDistribution):
             p_spec["thetas"] = bernstein_order
             return cls(
                 **apply_activation(
-                    **slice_parameter_vector(pvector, p_spec), act_thetas=act_thetas
+                    **slice_parameter_vector(pvector, p_spec),
+                    thetas_constrain_fn=thetas_constrain_fn,
                 ),
-                **kwds
+                **kwds,
             )

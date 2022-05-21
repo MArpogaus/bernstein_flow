@@ -5,7 +5,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2021-05-10 17:59:17 (Marcel Arpogaus)
-# changed : 2022-03-10 09:23:19 (Marcel Arpogaus)
+# changed : 2022-05-19 13:16:40 (Marcel Arpogaus)
 # DESCRIPTION #################################################################
 # ...
 # LICENSE #####################################################################
@@ -25,9 +25,7 @@ from bimodal import run
 from hyperopt import STATUS_FAIL, STATUS_OK, Trials, fmin, hp, tpe
 from tensorflow_probability import distributions as tfd
 
-from bernstein_flow.bijectors.bernstein import (
-    BernsteinBijector, BernsteinBijectorLinearExtrapolate,
-    BernsteinBijectorQuadraticExtrapolate, get_thetas_constraint_fn)
+from bernstein_flow.activations import get_thetas_constrain_fn
 
 if __name__ == "__main__":
     experiment_name = "hp_bimodal"
@@ -74,9 +72,8 @@ if __name__ == "__main__":
             "bijector_class",
             [
                 dict(
-                    bb_class=BernsteinBijector,
-                    act_thetas_kwds=dict(
-                        compact_support=(0, 1),
+                    thetas_constrain_fn_kwds=dict(
+                        support=(0, 1),
                         allow_values_outside_support=False,
                         constrain_second_drivative=False,
                     ),
@@ -84,15 +81,13 @@ if __name__ == "__main__":
                         tf.convert_to_tensor(0, dtype=tf.float32),
                         tf.convert_to_tensor(1, dtype=tf.float32),
                     ),
-                    **common_fit_kwds,
                     scale_base_distribution=False,
+                    **common_fit_kwds,
                 ),
                 dict(
-                    bb_class=BernsteinBijectorLinearExtrapolate,
-                    act_thetas_kwds=dict(
-                        compact_support=hp.choice(
-                            "compact_support_linear", [(-3, 3), False]
-                        ),
+                    extrapolation="linear",
+                    thetas_constrain_fn_kwds=dict(
+                        support=hp.choice("support_linear", [(-3, 3), False]),
                         allow_values_outside_support=hp.choice(
                             "allow_values_outside_support_linear", [True, False]
                         ),
@@ -105,11 +100,9 @@ if __name__ == "__main__":
                     **common_fit_kwds,
                 ),
                 dict(
-                    bb_class=BernsteinBijectorQuadraticExtrapolate,
-                    act_thetas_kwds=dict(
-                        compact_support=hp.choice(
-                            "compact_support_quad", [(-3, 3), False]
-                        ),
+                    extrapolation="quadratic",
+                    thetas_constrain_fn_kwds=dict(
+                        support=hp.choice("support_quad", [(-3, 3), False]),
                         allow_values_outside_support=hp.choice(
                             "allow_values_outside_support_quad", [True, False]
                         ),
@@ -142,13 +135,15 @@ if __name__ == "__main__":
         )
         mlflow.log_param("seed", args.seed)
         mlflow.log_params(params["fit_kwds"])
-        act_thetas_kwds = params["fit_kwds"].pop("act_thetas_kwds")
+        thetas_constrain_fn_kwds = params["fit_kwds"].pop("thetas_constrain_fn_kwds")
         mlflow.log_params(
             dict(filter(lambda kw: not isinstance(kw[1], dict), params.items()))
         )
-        mlflow.log_params(act_thetas_kwds)
+        mlflow.log_params(thetas_constrain_fn_kwds)
         params["fit_kwds"].update(
-            dict(act_thetas=get_thetas_constraint_fn(**act_thetas_kwds))
+            dict(
+                thetas_constrain_fn=get_thetas_constrain_fn(**thetas_constrain_fn_kwds)
+            )
         )
         model, bf, hist = run(args.seed, params, metrics_path, artifacts_path)
         mlflow.log_artifacts(artifacts_path)
@@ -165,7 +160,7 @@ if __name__ == "__main__":
         F,
         space,
         algo=tpe.suggest,
-        max_evals=2 if args._10sec else 50,
+        max_evals=2 if args._10sec else 25,
         trials=trials,
         rstate=np.random.RandomState(args.seed),
     )
