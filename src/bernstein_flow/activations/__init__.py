@@ -5,7 +5,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2022-03-10 15:39:04 (Marcel Arpogaus)
-# changed : 2022-05-19 10:11:57 (Marcel Arpogaus)
+# changed : 2022-05-23 16:39:11 (Marcel Arpogaus)
 # DESCRIPTION #################################################################
 # ...
 # LICENSE #####################################################################
@@ -71,7 +71,7 @@ def get_thetas_constrain_fn(
                 high2 = diff_positive[..., -1:] + fn(diff[..., -1:])
             else:
                 raise ValueError(
-                    f'Unsupported value "{second_derivative}" for second_derivative'
+                    f'Unsupported value "{constrain_second_drivative}" for constrain_second_drivative'
                 )
             diff_positive = tf.concat(
                 (
