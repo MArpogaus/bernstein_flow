@@ -33,7 +33,7 @@ import tensorflow as tf
 from tensorflow_probability import distributions as tfd
 from tensorflow_probability.python.internal import test_util
 
-from bernstein_flow.bijectors import BernsteinBijectorLinearExtrapolate
+from bernstein_flow.activations import get_thetas_constrain_fn
 from bernstein_flow.distributions import BernsteinFlow
 
 tf.random.set_seed(42)
@@ -125,22 +125,42 @@ for dtype in [tf.float32, tf.float64]:
         normal_dist, trans_dist = gen_dist(batch_shape=[32, 48], order=10, dtype=dtype)
         self.f(normal_dist, trans_dist)
 
-    def test_dist_batch_extra(self):
+    def test_dist_batch_linear_extra(self):
         normal_dist, trans_dist = gen_dist(
             batch_shape=[32],
             order=10,
             dtype=dtype,
-            bb_class=BernsteinBijectorLinearExtrapolate,
+            extrapolation="linear",
             clip_to_bernstein_domain=False,
         )
         self.f(normal_dist, trans_dist)
 
-    def test_dist_multi_extra(self):
+    def test_dist_multi_linear_extra(self):
         normal_dist, trans_dist = gen_dist(
             batch_shape=[32],
             order=10,
             dtype=dtype,
-            bb_class=BernsteinBijectorLinearExtrapolate,
+            extrapolation="linear",
+            clip_to_bernstein_domain=False,
+        )
+        self.f(normal_dist, trans_dist)
+
+    def test_dist_batch_quad_extra(self):
+        normal_dist, trans_dist = gen_dist(
+            batch_shape=[32],
+            order=10,
+            dtype=dtype,
+            extrapolation="quadratic",
+            clip_to_bernstein_domain=False,
+        )
+        self.f(normal_dist, trans_dist)
+
+    def test_dist_multi_quad_extra(self):
+        normal_dist, trans_dist = gen_dist(
+            batch_shape=[32],
+            order=10,
+            dtype=dtype,
+            extrapolation="quadratic",
             clip_to_bernstein_domain=False,
         )
         self.f(normal_dist, trans_dist)
@@ -153,9 +173,10 @@ for dtype in [tf.float32, tf.float64]:
             order=10,
             dtype=dtype,
             base_distribution=log_normal,
-            low=1e-10,
-            high=tf.math.exp(4.0),
             scale_base_distribution=True,
+            thetas_constrain_fn=get_thetas_constrain_fn(
+                support=(1e-10, tf.math.exp(4.0))
+            ),
         )
         self.f(normal_dist, trans_dist)
 
@@ -167,10 +188,10 @@ for dtype in [tf.float32, tf.float64]:
             order=10,
             dtype=dtype,
             base_distribution=logistic,
-            low=-8,
-            high=8,
             scale_base_distribution=True,
-            allow_values_outside_support=True,
+            thetas_constrain_fn=get_thetas_constrain_fn(
+                allow_values_outside_support=True, support=(-8, 8)
+            ),
         )
         self.f(normal_dist, trans_dist)
 
@@ -184,9 +205,8 @@ for dtype in [tf.float32, tf.float64]:
             order=10,
             dtype=dtype,
             base_distribution=uniform,
-            low=-1.0,
-            high=1.0,
             scale_base_distribution=False,
+            thetas_constrain_fn=get_thetas_constrain_fn(support=(-1, 1)),
         )
         self.f(normal_dist, trans_dist)
 
@@ -198,10 +218,10 @@ for dtype in [tf.float32, tf.float64]:
             order=10,
             dtype=dtype,
             base_distribution=student_t,
-            low=-25,
-            high=25,
             scale_base_distribution=False,
-            allow_values_outside_support=True,
+            thetas_constrain_fn=get_thetas_constrain_fn(
+                allow_values_outside_support=True, support=(-25, 25)
+            ),
         )
         self.f(normal_dist, trans_dist)
 
@@ -213,9 +233,8 @@ for dtype in [tf.float32, tf.float64]:
             order=10,
             dtype=dtype,
             base_distribution=weibull,
-            low=1e-10,
-            high=50,
             scale_base_distribution=False,
+            thetas_constrain_fn=get_thetas_constrain_fn(support=(-10, 50)),
         )
         self.f(normal_dist, trans_dist)
 
@@ -237,13 +256,23 @@ for dtype in [tf.float32, tf.float64]:
 
     setattr(
         BernsteinFlowTest,
-        "test_dist_batch_extra_" + dtype.name,
-        test_dist_batch_extra,
+        "test_dist_batch_linear_extra_" + dtype.name,
+        test_dist_batch_linear_extra,
     )
     setattr(
         BernsteinFlowTest,
-        "test_dist_multi_extra_" + dtype.name,
-        test_dist_multi_extra,
+        "test_dist_multi_linear_extra_" + dtype.name,
+        test_dist_multi_linear_extra,
+    )
+    setattr(
+        BernsteinFlowTest,
+        "test_dist_batch_quad_extra_" + dtype.name,
+        test_dist_batch_quad_extra,
+    )
+    setattr(
+        BernsteinFlowTest,
+        "test_dist_multi_quad_extra_" + dtype.name,
+        test_dist_multi_quad_extra,
     )
     setattr(BernsteinFlowTest, "test_log_normal_" + dtype.name, test_log_normal)
     setattr(BernsteinFlowTest, "test_logistic_" + dtype.name, test_logistic)

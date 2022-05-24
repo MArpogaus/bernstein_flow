@@ -32,18 +32,13 @@
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+from tensorflow_probability.python.internal import (dtype_util, prefer_static,
+                                                    tensor_util)
+
 from bernstein_flow.math.bernstein import (
-    gen_bernstein_polynomial,
-    gen_bernstein_polynomial_with_linear_extension,
+    gen_bernstein_polynomial, gen_bernstein_polynomial_with_linear_extension,
     gen_bernstein_polynomial_with_linear_extrapolation,
-    gen_bernstein_polynomial_with_quadratic_extrapolation,
-    get_end_points,
-)
-from tensorflow_probability.python.internal import (
-    dtype_util,
-    prefer_static,
-    tensor_util,
-)
+    gen_bernstein_polynomial_with_quadratic_extrapolation)
 
 
 def reshape_out(batch_shape, sample_shape, y):
