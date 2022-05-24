@@ -5,7 +5,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2022-03-10 15:39:04 (Marcel Arpogaus)
-# changed : 2022-05-23 16:39:11 (Marcel Arpogaus)
+# changed : 2022-05-24 12:41:04 (Marcel Arpogaus)
 # DESCRIPTION #################################################################
 # ...
 # LICENSE #####################################################################
@@ -18,7 +18,7 @@ from tensorflow_probability.python.internal import dtype_util, tensor_util
 
 def get_thetas_constrain_fn(
     support=(-3, 3),
-    fn=tf.math.softplus,
+    fn=tf.abs,
     allow_values_outside_support=False,
     constrain_second_drivative=False,
 ):
@@ -83,7 +83,7 @@ def get_thetas_constrain_fn(
             )
 
         if support:
-            diff_positive = tf.math.softmax(diff_positive)
+            diff_positive /= tf.math.reduce_sum(diff_positive, axis=-1)[..., None]
             diff_positive *= high - low
         tc = tf.concat(
             (
