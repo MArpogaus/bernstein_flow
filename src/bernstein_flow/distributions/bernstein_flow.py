@@ -73,7 +73,7 @@ def slice_parameter_vector(pvector: tf.Tensor, p_spec: dict = None) -> dict:
         return parameters
 
 
-def ensure_positive(x: tf.Tensor, min_value: float = 1e-2, name: str = None):
+def ensure_positive(x: tf.Tensor, fn=tf.abs, min_value: float = 1e-2, name: str = None):
     """Activation function wich ensures that all given values are positive <= min_value.
 
     :param x: Tensor to evaluate the function on.
@@ -85,7 +85,7 @@ def ensure_positive(x: tf.Tensor, min_value: float = 1e-2, name: str = None):
 
     """
     with tf.name_scope("ensure_positive"):
-        scale = tf.math.maximum(tf.math.softplus(x), min_value, name=name)
+        scale = tf.math.maximum(fn(x), min_value, name=name)
         return scale
 
 
