@@ -37,6 +37,8 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 from matplotlib.patches import ConnectionPatch
 
+from .plot_flow import plot_flow
+
 
 # function definitions ########################################################
 def vizualize_flow_from_z_domain(flow, z_min=-3, z_max=3):
@@ -243,53 +245,3 @@ def plot_value_and_gradient(func, y):
     ax[1].scatter(y, grads, s=1, label="grad")
     ax[1].legend()
     return fig
-
-
-def plot_flow(flow, y, ax=plt, color="skyblue"):
-    base_dist = flow.distribution
-    bijector = flow.bijector
-
-    dense_y = flow.prob(y).numpy()
-
-    mu = np.squeeze(bijector.forward(base_dist.mean()))
-    plus_sd = np.squeeze(bijector.forward(base_dist.mean() + base_dist.stddev()))
-    minus_sd = np.squeeze(bijector.forward(base_dist.mean() - base_dist.stddev()))
-
-    ax.plot(
-        [mu, mu],
-        [np.min(dense_y), flow.prob(mu.reshape(-1, 1)).numpy()],
-        color="black",
-        lw=2,
-    )
-    ax.plot(
-        [plus_sd, plus_sd],
-        [np.min(dense_y), flow.prob(plus_sd.reshape(-1, 1)).numpy()],
-        "--",
-        color="green",
-    )
-    ax.plot(
-        [minus_sd, minus_sd],
-        [np.min(dense_y), flow.prob(minus_sd.reshape(-1, 1)).numpy()],
-        "--",
-        color="green",
-    )
-
-    def quant(p):
-        q = bijector.forward(base_dist.quantile(p))
-        return np.squeeze(q)
-
-    qs = [0.05, 0.1, 0.2, 0.3, 0.4]
-    ax.fill_between(
-        np.squeeze(y), np.squeeze(dense_y), np.min(dense_y), fc=color, alpha=max(qs)
-    )
-    for i, q in enumerate(sorted(qs)):
-        ax.fill_between(
-            np.squeeze(y),
-            np.squeeze(dense_y),
-            np.min(dense_y),
-            where=((np.squeeze(y) > quant(q)) & (np.squeeze(y) < quant(1 - q))),
-            fc=color,
-            alpha=q / max(qs),
-        )
-
-    ax.plot(y, dense_y, "-", color=color, linewidth=2)
