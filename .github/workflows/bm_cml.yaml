@@ -43,7 +43,7 @@ jobs:
           echo '## Flow' >> report.md
           cml-publish artifacts/bimodal/bm_flow.png --md >> report.md
           cml-publish artifacts/bimodal/bm_bijectors.png --md >> report.md
-          cml-publish artifacts/bimodal/bm_trafo.png --md >> report.md
+          cml-publish artifacts/bimodal/bm_x_trafo.png --md >> report.md
 
           echo '## Bijector' >> report.md
           cml-publish artifacts/bimodal/bm_bijector.png --md >> report.md

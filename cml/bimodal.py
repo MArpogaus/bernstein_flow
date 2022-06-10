@@ -5,7 +5,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2021-03-22 16:42:31 (Marcel Arpogaus)
-# changed : 2022-03-10 13:37:40 (Marcel Arpogaus)
+# changed : 2022-06-10 14:27:10 (Marcel Arpogaus)
 # DESCRIPTION ##################################################################
 # ...
 # LICENSE ######################################################################
@@ -29,7 +29,7 @@ from tensorflow_probability import distributions as tfd
 from bernstein_flow.distributions import BernsteinFlow
 from bernstein_flow.util.visualization import (plot_chained_bijectors,
                                                plot_value_and_gradient,
-                                               plot_x_trafo,
+                                               plot_x_trafo, plot_flow,
                                                vizualize_flow_from_z_domain)
 
 try:
@@ -225,15 +225,15 @@ def results(
     with open(os.path.join(artifacts_path, "bm_pvector.txt"), "w") as pvector:
         pvector.write(print_param(flow))
 
-    fig = vizualize_flow_from_z_domain(flow)
+    fig = plot_flow(flow)
     fig.savefig(os.path.join(artifacts_path, "bm_flow.png"))
 
     # Bijector
     fig = plot_x_trafo(flow, xmin=-2, xmax=2, n=25)
-    fig.savefig(os.path.join(artifacts_path, "bm_bijectors.png"))
+    fig.savefig(os.path.join(artifacts_path, "bm_x_trafo.png"))
 
     fig = plot_chained_bijectors(flow)
-    fig.savefig(os.path.join(artifacts_path, "bm_trafo.png"))
+    fig.savefig(os.path.join(artifacts_path, "bm_bijectors.png"))
 
     y = np.linspace(-3, 3, 1000, dtype=np.float32)
     fig = plot_value_and_gradient(flow.bijector.inverse, y.copy())
