@@ -33,8 +33,11 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 from tensorflow_probability import bijectors as tfb
 from tensorflow_probability import distributions as tfd
-from tensorflow_probability.python.internal import (dtype_util, prefer_static,
-                                                    tensor_util)
+from tensorflow_probability.python.internal import (
+    dtype_util,
+    prefer_static,
+    tensor_util,
+)
 
 from bernstein_flow.activations import get_thetas_constrain_fn
 from bernstein_flow.bijectors import BernsteinBijector
@@ -73,12 +76,14 @@ def slice_parameter_vector(pvector: tf.Tensor, p_spec: dict = None) -> dict:
         return parameters
 
 
-def ensure_positive(x: tf.Tensor, fn=tf.abs, min_value: float = 1e-2, name: str = None):
-    """Activation function wich ensures that all given values are positive <= min_value.
+def ensure_positive(
+    x: tf.Tensor, fn=tf.math.softplus, min_value: float = 1e-2, name: str = None
+):
+    """Activation function which ensures that all given values are positive <= min_value.
 
     :param x: Tensor to evaluate the function on.
     :param min_value: minimum value (optional)
-      Default Value: 1e-8
+      Default Value: 1e-2
     :param name: name for the operation (optional)
     :type name: str
     :returns: Tensor with positive values
