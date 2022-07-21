@@ -5,7 +5,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2022-06-01 15:21:22 (Marcel Arpogaus)
-# changed : 2021-03-26 11:48:25 (Marcel Arpogaus)
+# changed : 2022-07-21 15:28:22 (Marcel Arpogaus)
 # DESCRIPTION #################################################################
 #
 # This project is following the PEP8 style guide:
@@ -28,7 +28,6 @@
 # limitations under the License.
 ###############################################################################
 # REQUIRED PYTHON MODULES #####################################################
-
 from functools import partial, reduce
 
 import matplotlib as mpl
@@ -82,6 +81,10 @@ def get_fomulas(bijectors):
     return formuals
 
 
+def get_bijectors(flow):
+    return flow.bijector.bijector.bijectors
+
+
 def get_bijector_names(bijectors):
     return list(map(lambda x: x.name, reversed(bijectors)))
 
@@ -104,7 +107,7 @@ def get_intersec_reducer(l):
 def get_plot_data(flow, n=200, z_values=None, seed=1):
     tf.random.set_seed(seed)
 
-    chained_bijectors = flow.bijector.bijector.bijectors
+    chained_bijectors = get_bijectors(flow)
     bijector_names = get_bijector_names(chained_bijectors)
     pre_bpoly_trafos, post_bpoly_trafos = split_bijector_names(bijector_names)
 
@@ -256,6 +259,7 @@ def add_annot_to_axes(
     formuals="",
     pos=0.5,
     cp_kwds=dict(arrowstyle="-|>", shrinkA=10, shrinkB=10, color="gray"),
+    usetex=True,
 ):
 
     xyA = None
@@ -308,7 +312,7 @@ def add_annot_to_axes(
         xyA = xyB
 
     ax = axs["math"]
-    ax.text(0.5, 0.5, formuals, ha="center", va="center", usetex=True)
+    ax.text(0.5, 0.5, formuals, ha="center", va="center", usetex=usetex)
 
     common_arrowprops = dict(
         arrowstyle="-",
@@ -332,7 +336,7 @@ def add_annot_to_axes(
         textcoords="offset points",
         ha="right",
         va="center",
-        usetex=True,
+        usetex=usetex,
         arrowprops=dict(**common_arrowprops, connectionstyle="arc3,rad=-0.5"),
     )
 
@@ -357,7 +361,7 @@ def add_annot_to_axes(
             textcoords="offset points",
             ha="right",
             va="center",
-            usetex=True,
+            usetex=usetex,
             arrowprops=arrowprops,
         )
 
@@ -381,32 +385,34 @@ def add_annot_to_axes(
             textcoords="offset points",
             ha="right",
             va="center",
-            usetex=True,
+            usetex=usetex,
             arrowprops=arrowprops,
         )
 
 
-def plot_flow(flow, n=500, z_values=None, size=1.5, **kwds):
-    plt.rcParams.update(
-        {
-            "text.latex.preamble": r"\usepackage{amsmath}",  #  for the align enivironment
-            "text.usetex": True,  # use inline math for ticks
-        }
-    )
+def plot_flow(flow, n=500, z_values=None, size=1.5, usetex=True, **kwds):
+    if usetex:
+        plt.rcParams.update(
+            {
+                "text.latex.preamble": r"\usepackage{amsmath}",  #  for the align enivironment
+                "text.usetex": True,  # use inline math for ticks
+            }
+        )
     assert flow.batch_shape == [], "Only unimodal distributions supported"
     plot_data, post_bpoly_trafos, pre_bpoly_trafos = get_plot_data(
         flow, n=n, z_values=z_values
     )
     fig, axs = prepare_figure(plot_data, pre_bpoly_trafos, post_bpoly_trafos, size=size)
     plot_data_to_axes(axs, plot_data, pre_bpoly_trafos, post_bpoly_trafos)
-    bijectors = flow.bijector.bijector.bijectors
+    bijectors = get_bijectors(flow)
     add_annot_to_axes(
         axs,
         plot_data,
         pre_bpoly_trafos,
         post_bpoly_trafos,
         annot_map=get_annot_map(get_bijector_names(bijectors)),
-        formuals=get_fomulas(bijectors),
+        formuals=get_fomulas(bijectors) if usetex else None,
+        usetex=usetex,
         **kwds,
     )
     handles, labels = axs["distribution"].get_legend_handles_labels()
