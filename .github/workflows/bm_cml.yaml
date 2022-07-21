@@ -15,7 +15,7 @@ jobs:
         with:
           python-version: "3.8"
       - name: Install TeXlive
-        run: sudo apt-get update && sudo apt-get install texlive texlive-science texlive-latex-extra cm-super
+        run: sudo apt-get update && sudo apt-get install texlive texlive-science texlive-latex-extra cm-super dvipng
       - name: cml
         env:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
