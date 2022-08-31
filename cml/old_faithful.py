@@ -5,7 +5,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2021-03-22 11:14:00 (Marcel Arpogaus)
-# changed : 2021-10-28 18:52:51 (Marcel Arpogaus)
+# changed : 2022-05-21 08:45:57 (Marcel Arpogaus)
 # DESCRIPTION ##################################################################
 # ...
 # LICENSE ######################################################################
@@ -19,8 +19,9 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 import tensorflow_probability as tfp
-from bernstein_flow.distributions import BernsteinFlow
 from tensorflow.keras.layers import Dense, InputLayer
+
+from bernstein_flow.distributions import BernsteinFlow
 
 # Ensure Reproducibility
 np.random.seed(2)
@@ -105,9 +106,7 @@ flow_model.add(InputLayer(input_shape=(1)))
 # Here could come a gigantus network
 flow_model.add(Dense(3 + bernstein_order))
 flow_model.add(
-    tfp.layers.DistributionLambda(
-        lambda pv: BernsteinFlow.from_pvector(pv, allow_values_outside_support=True)
-    )
+    tfp.layers.DistributionLambda(lambda pv: BernsteinFlow.from_pvector(pv))
 )  # <--- Replace the Normal distribution with the Transformed Distribution
 
 

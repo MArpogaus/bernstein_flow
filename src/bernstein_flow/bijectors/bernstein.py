@@ -101,60 +101,6 @@ def bernstein_polynom(theta):
     return b_poly
 
 
-def constrain_thetas(
-    thetas_unconstrained: tf.Tensor,
-    high=None,
-    low=None,
-    allow_values_outside_support=False,
-    eps=1e-5,
-) -> tf.Tensor:
-    """Ensures monotone increasing Bernstein coefficients.
-
-    :param thetas_unconstrained: Tensor containing the distance of the
-      Bernstein coefficients.
-    :param low: The lower bound.
-    :param high: The upper bound.
-    :param allow_values_outside_support: Use the first and last parameter to
-      increase/decrease the upper/lower bound.
-    :param eps: Optional minimum distance of thetas. Default Value: 1e-8
-    :param fn: Function to ensure positive values.
-    :returns:   Moncton increasing Bernstein coefficients.
-    :rtype:     Tensor
-
-    """
-    if not tf.is_tensor(high):
-        high = 4.0
-    if not tf.is_tensor(low):
-        low = -4.0
-    with tf.name_scope("constrain_theta"):
-        dtype = dtype_util.common_dtype(
-            [thetas_unconstrained, low, high], dtype_hint=tf.float32
-        )
-
-        thetas_unconstrained = tensor_util.convert_nonref_to_tensor(
-            thetas_unconstrained, name="thetas_unconstrained", dtype=dtype
-        )
-        low = tensor_util.convert_nonref_to_tensor(low, name="low", dtype=dtype)
-        high = tensor_util.convert_nonref_to_tensor(high, name="high", dtype=dtype)
-
-        if allow_values_outside_support:
-            low -= tf.math.softplus(thetas_unconstrained[..., :1], name="low")
-            high += tf.math.softplus(thetas_unconstrained[..., -1:], name="high")
-            d = tf.math.softmax(thetas_unconstrained[..., 1:-1]) + eps
-        else:
-            d = tf.math.softmax(thetas_unconstrained) + eps
-        d /= tf.reduce_sum(d, axis=-1)[..., None]
-        d *= high - low
-        tc = tf.concat(
-            (
-                low * tf.ones_like(thetas_unconstrained[..., :1]),
-                d,
-            ),
-            axis=-1,
-        )
-        return tf.cumsum(tc, axis=-1, name="theta")
-
-
 class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInverse):
     """
     Implementing Bernstein polynomials using the `tfb.Bijector` interface for
@@ -227,10 +173,6 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
                 name=name,
                 **kwds
             )
-
-    @classmethod
-    def constrain_theta(cls, *args, **kwds):
-        return constrain_thetas(*args, **kwds)
 
     def _forward_log_det_jacobian(self, y):
         theta_shape = prefer_static.shape(self.thetas)

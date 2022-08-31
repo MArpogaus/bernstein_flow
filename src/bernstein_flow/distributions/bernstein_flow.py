@@ -39,8 +39,8 @@ from tensorflow_probability.python.internal import (
     tensor_util,
 )
 
+from bernstein_flow.activations import get_thetas_constrain_fn
 from bernstein_flow.bijectors import BernsteinBijector
-from bernstein_flow.bijectors.bernstein import constrain_thetas
 
 
 def slice_parameter_vector(pvector: tf.Tensor, p_spec: dict = None) -> dict:
@@ -50,7 +50,7 @@ def slice_parameter_vector(pvector: tf.Tensor, p_spec: dict = None) -> dict:
     :type pvector: tf.Tensor
     :param p_spec: specification of parameter sizes in the form {'parameter_name': size}
     :type p_spec: dict
-    :returns: Dictionary containing the scliced parameters
+    :returns: Dictionary containing the sliced parameters
     :rtype: dict
 
     """
@@ -76,20 +76,22 @@ def slice_parameter_vector(pvector: tf.Tensor, p_spec: dict = None) -> dict:
         return parameters
 
 
-def ensure_positive(x: tf.Tensor, min_value: float = 1e-2, name: str = None):
-    """Activation function wich ensures that all given values are positive <= min_value.
+def ensure_positive(
+    x: tf.Tensor, fn=tf.math.softplus, min_value: float = 1e-2, name: str = None
+):
+    """Activation function which ensures that all given values are positive <= min_value.
 
     :param x: Tensor to evaluate the function on.
     :param min_value: minimum value (optional)
-      Default Value: 1e-8
+      Default Value: 1e-2
     :param name: name for the operation (optional)
     :type name: str
     :returns: Tensor with positive values
 
     """
     with tf.name_scope("ensure_positive"):
-        scale = tf.math.softplus(x) + min_value
-        return tf.identity(scale, name=name)
+        scale = tf.math.maximum(fn(x), min_value, name=name)
+        return scale
 
 
 def apply_activation(
@@ -97,10 +99,21 @@ def apply_activation(
     a1=None,
     b1=None,
     a2=None,
-    low=None,
-    high=None,
-    allow_values_outside_support=False,
+    thetas_constrain_fn=get_thetas_constrain_fn(),
 ):
+    """Apply activation functions to raw parameters.
+
+    :param thetas:  The Bernstein coefficients.
+    :type thetas:  Tensor
+    :param a1:     The unconstrained scale of f1.
+    :type a1:     Tensor
+    :param b1:     The shift of f1.
+    :type b1:     Tensor
+    :param a2:     The unconstrained scale of f3.
+    :type a2:     Tensor
+    :param thetas_constrain_fn: Function used to constrain the Bernstein coefficients
+
+    """
     with tf.name_scope("apply_activation"):
         result = {}
         if tf.is_tensor(a1):
@@ -110,13 +123,7 @@ def apply_activation(
         if tf.is_tensor(a2):
             result["a2"] = ensure_positive(a2, min_value=1.0, name="a2")
 
-        result["thetas"] = constrain_thetas(
-            thetas_unconstrained=thetas,
-            low=low,
-            high=high,
-            allow_values_outside_support=allow_values_outside_support,
-        )
-
+        result["thetas"] = thetas_constrain_fn(thetas)
         return result
 
 
@@ -172,8 +179,8 @@ def init_bijectors(
             bijectors.append(
                 tfb.Invert(
                     tfb.SoftClip(
-                        high=tf.math.reduce_max(thetas, axis=-1),
-                        low=tf.math.reduce_min(thetas, axis=-1),
+                        high=thetas[..., 0],
+                        low=thetas[..., -1],
                         hinge_softness=0.5,
                         name="soft_clip_base_distribution",
                     )
@@ -268,10 +275,8 @@ class BernsteinFlow(tfd.TransformedDistribution):
         scale_data=True,
         shift_data=True,
         scale_base_distribution=True,
-        allow_values_outside_support=False,
-        low=None,
-        high=None,
-        **kwds
+        thetas_constrain_fn=get_thetas_constrain_fn(),
+        **kwds,
     ):
         with tf.name_scope("from_pvector"):
             dtype = dtype_util.common_dtype([pvector], dtype_hint=tf.float32)
@@ -302,9 +307,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
             return cls(
                 **apply_activation(
                     **slice_parameter_vector(pvector, p_spec),
-                    low=low,
-                    high=high,
-                    allow_values_outside_support=allow_values_outside_support
+                    thetas_constrain_fn=thetas_constrain_fn,
                 ),
-                **kwds
+                **kwds,
             )

@@ -36,7 +36,7 @@ import tensorflow_probability as tfp
 from bernstein_flow.bijectors import (
     BernsteinBijectorLinearExtrapolate as BernsteinBijector,
 )
-from bernstein_flow.bijectors.bernstein import constrain_thetas
+from bernstein_flow.activations import get_thetas_constrain_fn
 from tensorflow_probability.python.internal import test_util, tensor_util
 
 tf.random.set_seed(42)
@@ -45,9 +45,8 @@ tf.random.set_seed(42)
 @test_util.test_all_tf_execution_regimes
 class BernsteinBijectorTest(tf.test.TestCase):
     def f(self, batch_shape=[], x_shape=[100], order=10, dtype=tf.float32):
-        thetas = constrain_thetas(
-            tf.ones(batch_shape + [order], dtype=dtype), low=-3, high=3
-        )
+        thetas_constrain_fn = get_thetas_constrain_fn(smooth_bounds=True)
+        thetas = thetas_constrain_fn(tf.ones(batch_shape + [order], dtype=dtype))
         x = tf.random.uniform(x_shape, -1.0, 2.0, dtype=dtype)
 
         bb = BernsteinBijector(thetas=thetas)

@@ -29,27 +29,28 @@
 ###############################################################################
 
 # REQUIRED PYTHON MODULES #####################################################
-import unittest
 import tensorflow as tf
 
 from tensorflow_probability import distributions as tfd
 
 from bernstein_flow.distributions import BernsteinFlow
 from bernstein_flow.bijectors import BernsteinBijectorLinearExtrapolate
+from bernstein_flow.activations import get_thetas_constrain_fn
 
 from tensorflow_probability.python.internal import test_util
 
 tf.random.set_seed(42)
 
 
-def gen_pvs(batch_shape, order, dtype):
+def gen_pvs(batch_shape, order, dtype, seed):
+    tf.random.set_seed(seed)
     return tf.random.uniform(
         shape=batch_shape + [4 + order], minval=-1000, maxval=100, dtype=dtype
     )
 
 
-def gen_dist(batch_shape, order=5, dtype=tf.float32, **kwds):
-    pvs = gen_pvs(batch_shape, order, dtype=dtype)
+def gen_dist(batch_shape, order=5, dtype=tf.float32, seed=1, **kwds):
+    pvs = gen_pvs(batch_shape, order, dtype=dtype, seed=seed)
     n = tfd.Normal(
         loc=tf.zeros(batch_shape, dtype=dtype),
         scale=tf.ones(batch_shape, dtype=dtype),
@@ -100,7 +101,7 @@ class BernsteinFlowTest(tf.test.TestCase):
             # check for infs and nans
             self.assertAllInRange(trans_dist.prob(x), 0, trans_dist.dtype.max)
             self.assertAllInRange(
-                trans_dist.sample(10000), trans_dist.dtype.min, trans_dist.dtype.max
+                trans_dist.sample(1000), trans_dist.dtype.min, trans_dist.dtype.max
             )
             try:
                 self.assertAllInRange(
@@ -125,7 +126,7 @@ for dtype in [tf.float32, tf.float64]:
         self.f(normal_dist, trans_dist)
 
     def test_dist_multi(self):
-        normal_dist, trans_dist = gen_dist(batch_shape=[32, 48], order=10, dtype=dtype)
+        normal_dist, trans_dist = gen_dist(batch_shape=[16, 10], order=10, dtype=dtype)
         self.f(normal_dist, trans_dist)
 
     def test_dist_batch_extra(self):
@@ -149,36 +150,37 @@ for dtype in [tf.float32, tf.float64]:
         self.f(normal_dist, trans_dist)
 
     def test_log_normal(self):
-        batch_shape = [32, 48]
+        batch_shape = [16, 10]
         log_normal = tfd.LogNormal(loc=tf.zeros(batch_shape, dtype=dtype), scale=1.0)
         normal_dist, trans_dist = gen_dist(
             batch_shape=batch_shape,
             order=10,
             dtype=dtype,
             base_distribution=log_normal,
-            low=1e-10,
-            high=tf.math.exp(4.0),
+            thetas_constrain_fn=get_thetas_constrain_fn(
+                low=1e-10, high=tf.math.exp(tf.constant(4.0, dtype=dtype))
+            ),
             scale_base_distribution=True,
         )
         self.f(normal_dist, trans_dist)
 
     def test_logistic(self):
-        batch_shape = [32, 48]
+        batch_shape = [16, 10]
         logistic = tfd.Logistic(loc=tf.zeros(batch_shape, dtype=dtype), scale=1)
         normal_dist, trans_dist = gen_dist(
             batch_shape=batch_shape,
             order=10,
             dtype=dtype,
             base_distribution=logistic,
-            low=-8,
-            high=8,
+            thetas_constrain_fn=get_thetas_constrain_fn(
+                low=-8, high=8, allow_flexible_bounds=True
+            ),
             scale_base_distribution=True,
-            allow_values_outside_support=True,
         )
         self.f(normal_dist, trans_dist)
 
     def test_uniform(self):
-        batch_shape = [32, 48]
+        batch_shape = [16, 10]
         uniform = tfd.Uniform(
             -tf.ones(batch_shape, dtype=dtype), tf.ones(batch_shape, dtype=dtype)
         )
@@ -187,37 +189,35 @@ for dtype in [tf.float32, tf.float64]:
             order=10,
             dtype=dtype,
             base_distribution=uniform,
-            low=-1.0,
-            high=1.0,
+            thetas_constrain_fn=get_thetas_constrain_fn(low=-1.0, high=1.0),
             scale_base_distribution=False,
         )
         self.f(normal_dist, trans_dist)
 
     def test_student_t(self):
-        batch_shape = [32, 48]
+        batch_shape = [16, 10]
         student_t = tfd.StudentT(2, loc=tf.zeros(batch_shape, dtype=dtype), scale=1.0)
         normal_dist, trans_dist = gen_dist(
             batch_shape=batch_shape,
             order=10,
             dtype=dtype,
             base_distribution=student_t,
-            low=-25,
-            high=25,
+            thetas_constrain_fn=get_thetas_constrain_fn(
+                low=-25, high=25, allow_flexible_bounds=True
+            ),
             scale_base_distribution=False,
-            allow_values_outside_support=True,
         )
         self.f(normal_dist, trans_dist)
 
     def test_weibull(self):
-        batch_shape = [32, 48]
+        batch_shape = [16, 10]
         weibull = tfd.Weibull(0.5, scale=tf.ones(batch_shape, dtype=dtype))
         normal_dist, trans_dist = gen_dist(
             batch_shape=batch_shape,
             order=10,
             dtype=dtype,
             base_distribution=weibull,
-            low=1e-10,
-            high=50,
+            thetas_constrain_fn=get_thetas_constrain_fn(low=1e-10, high=50),
             scale_base_distribution=False,
         )
         self.f(normal_dist, trans_dist)
@@ -231,10 +231,10 @@ for dtype in [tf.float32, tf.float64]:
         self.f(n, bf)
 
     def test_random_numbers(self):
-        for bs in [[2], [32], [32, 48]]:
-            for _ in range(10):
+        for bs in [[2], [32], [10, 10]]:
+            for s in range(10):
                 normal_dist, trans_dist = gen_dist(
-                    batch_shape=bs, order=10, dtype=dtype
+                    batch_shape=bs, order=10, dtype=dtype, seed=s
                 )
                 self.f(normal_dist, trans_dist)
 

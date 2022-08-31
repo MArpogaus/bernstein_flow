@@ -14,7 +14,8 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: "3.8"
-
+      - name: Install TeXlive
+        run: sudo apt-get update && sudo apt-get install texlive texlive-science texlive-latex-extra cm-super dvipng
       - name: cml
         env:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
@@ -43,7 +44,7 @@ jobs:
           echo '## Flow' >> report.md
           cml-publish artifacts/bimodal/bm_flow.png --md >> report.md
           cml-publish artifacts/bimodal/bm_bijectors.png --md >> report.md
-          cml-publish artifacts/bimodal/bm_trafo.png --md >> report.md
+          cml-publish artifacts/bimodal/bm_x_trafo.png --md >> report.md
 
           echo '## Bijector' >> report.md
           cml-publish artifacts/bimodal/bm_bijector.png --md >> report.md
