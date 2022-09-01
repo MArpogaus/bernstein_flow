@@ -12,7 +12,7 @@ bimodal:
         # fn: !!python/name:tensorflow.square
     # clip_base_distribution: true
     clip_to_bernstein_domain: false
-    scale_base_distribution: true
+    scale_base_distribution: false
     scale_data: true
     shift_data: true
     batch_size: 128
