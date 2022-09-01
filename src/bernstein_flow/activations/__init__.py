@@ -5,7 +5,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2022-03-10 15:39:04 (Marcel Arpogaus)
-# changed : 2022-08-31 18:10:23 (Marcel Arpogaus)
+# changed : 2022-09-01 14:34:32 (Marcel Arpogaus)
 # DESCRIPTION #################################################################
 # ...
 # LICENSE #####################################################################
@@ -22,7 +22,7 @@ def get_thetas_constrain_fn(
     smooth_bounds=False,
     allow_flexible_bounds=False,
     fn=tf.math.softplus,
-    eps=1e-6,
+    eps=1e-5,
 ):
     def constrain_fn(diff):
         dtype = dtype_util.common_dtype([diff], dtype_hint=tf.float32)
