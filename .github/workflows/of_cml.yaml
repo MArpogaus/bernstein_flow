@@ -19,8 +19,7 @@ jobs:
         env:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
         run: |
-              pip install .
-              pip install pandas
+              pip install '.[train]'
               python cml/old_faithful.py
 
               echo '# Old Faithful' >> report.md

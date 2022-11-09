@@ -20,8 +20,7 @@ jobs:
         env:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          pip install .
-          pip install pandas pyyaml
+          pip install '.[train]'
           python cml/bimodal.py
 
           echo '# Bimodal Model' >> report.md
