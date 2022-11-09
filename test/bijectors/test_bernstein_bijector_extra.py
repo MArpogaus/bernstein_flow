@@ -33,11 +33,12 @@ from functools import partial
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+from tensorflow_probability.python.internal import test_util
+
+from bernstein_flow.activations import get_thetas_constrain_fn
 from bernstein_flow.bijectors import (
     BernsteinBijectorLinearExtrapolate as BernsteinBijector,
 )
-from bernstein_flow.activations import get_thetas_constrain_fn
-from tensorflow_probability.python.internal import test_util, tensor_util
 
 tf.random.set_seed(42)
 

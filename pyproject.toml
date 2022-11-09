@@ -11,7 +11,8 @@ classifiers = [
     "Programming Language :: Python :: 3.7",
 ]
 dependencies = [
-        "tensorflow_probability>=0.13.*, <=0.18.*",
+        "tensorflow>=2.5.*",
+        "tensorflow_probability>=0.13.*, <=0.16.0",
         "matplotlib",
 ]
 dynamic = ["version"]

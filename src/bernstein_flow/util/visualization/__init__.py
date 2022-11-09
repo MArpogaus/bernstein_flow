@@ -30,7 +30,6 @@
 # REQUIRED PYTHON MODULES #####################################################
 
 import matplotlib.gridspec as gridspec
-
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf

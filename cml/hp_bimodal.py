@@ -21,13 +21,13 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 import tensorflow_probability as tfp
+from bimodal import run
+from hyperopt import STATUS_FAIL, STATUS_OK, Trials, fmin, hp, tpe
+
 from bernstein_flow.bijectors import (
     BernsteinBijector,
     BernsteinBijectorLinearExtrapolate,
 )
-from hyperopt import STATUS_FAIL, STATUS_OK, Trials, fmin, hp, tpe
-
-from bimodal import run
 
 if __name__ == "__main__":
     experiment_name = "hp_bimodal"

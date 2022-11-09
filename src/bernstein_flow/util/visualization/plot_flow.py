@@ -394,7 +394,8 @@ def plot_flow(flow, n=500, z_values=None, size=1.5, usetex=True, **kwds):
     if usetex:
         plt.rcParams.update(
             {
-                "text.latex.preamble": r"\usepackage{amsmath}",  #  for the align enivironment
+                # for the align enivironment
+                "text.latex.preamble": r"\usepackage{amsmath}",
                 "text.usetex": True,  # use inline math for ticks
             }
         )

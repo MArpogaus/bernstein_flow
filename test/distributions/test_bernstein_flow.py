@@ -31,14 +31,12 @@
 # REQUIRED PYTHON MODULES #####################################################
 import pytest
 import tensorflow as tf
-
 from tensorflow_probability import distributions as tfd
-
-from bernstein_flow.distributions import BernsteinFlow
-from bernstein_flow.bijectors import BernsteinBijectorLinearExtrapolate
-from bernstein_flow.activations import get_thetas_constrain_fn
-
 from tensorflow_probability.python.internal import test_util
+
+from bernstein_flow.activations import get_thetas_constrain_fn
+from bernstein_flow.bijectors import BernsteinBijectorLinearExtrapolate
+from bernstein_flow.distributions import BernsteinFlow
 
 tf.random.set_seed(42)
 
@@ -121,6 +119,7 @@ class BernsteinFlowTest(tf.test.TestCase):
 
 # ref: https://stackoverflow.com/questions/32899
 for dtype in [tf.float32, tf.float64]:
+
     @pytest.mark.skip
     def test_dist_batch(self):
         normal_dist, trans_dist = gen_dist(batch_shape=[32], order=10, dtype=dtype)
