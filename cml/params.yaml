@@ -1,0 +1,19 @@
+bimodal:
+  fit_kwds:
+    output_shape: 20
+    bb_class: !!python/name:bernstein_flow.bijectors.bernstein_extra.BernsteinBijectorLinearExtrapolate
+    thetas_constrain_fn:
+      !!python/object/apply:bernstein_flow.activations.get_thetas_constrain_fn
+      kwds:
+        low: -3
+        high: 3
+        smooth_bounds: true
+        allow_flexible_bounds: true
+        # fn: !!python/name:tensorflow.square
+    # clip_base_distribution: true
+    clip_to_bernstein_domain: false
+    scale_base_distribution: false
+    scale_data: true
+    shift_data: true
+    batch_size: 128
+  scale_data_to_domain: false

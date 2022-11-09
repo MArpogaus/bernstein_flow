@@ -41,9 +41,7 @@ class BernsteinFlowLoss(Loss):
     a bijective transformation model using Bernstein polynomials.
     """
 
-    def __init__(
-            self,
-            **kwargs: dict):
+    def __init__(self, **kwargs: dict):
         """
         Constructs a new instance of the Keras Loss function.
 
@@ -55,9 +53,7 @@ class BernsteinFlowLoss(Loss):
         """
         super().__init__(**kwargs)
 
-    def call(self,
-             y: tf.Tensor,
-             pvector: tf.Tensor) -> tf.Tensor:
+    def call(self, y: tf.Tensor, pvector: tf.Tensor) -> tf.Tensor:
         """
         Evaluates the negative logarithmic likelihood given a sample y.
 
