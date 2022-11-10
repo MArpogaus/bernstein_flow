@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "bernstein_flow"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.7, <=3.9"
 license = {text = "Apache Software License (Apache 2.0)"}
 classifiers = [
     "Programming Language :: Python :: 3.7",
@@ -24,12 +24,25 @@ train = [
 ]
 develop = [
     'bernstein_flow[train]',
-    'pytest',
+    'autoflake',
     'black',
     'isort',
-    'python-lsp-server[all]',
+    'pre-commit',
+    'pytest',
+    'pytest-xdist',
     'python-lsp-black',
+    'python-lsp-server[all]',
 ]
 
 [tool.setuptools.dynamic]
 version = {attr = "bernstein_flow.__version__"}
+
+[tool.autoflake]
+check = true
+expand-star-imports = true
+remove-unused-variables = true
+ignore-init-module-imports = true
+remove-all-unused-imports = true
+
+[tool.isort]
+profile = "black"

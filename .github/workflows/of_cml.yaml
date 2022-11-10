@@ -23,16 +23,16 @@ jobs:
               python cml/old_faithful.py
 
               echo '# Old Faithful' >> report.md
-              
+
               echo '## Learning Curve' >> report.md
               cml-publish metrics/old_faithful/of_hist.png --md >> report.md
 
               echo '## Metrics' >> report.md
               cat metrics/old_faithful/of_metrics.txt >> report.md
-              
+
               echo '## Parameter Vector' >> report.md
               cat metrics/old_faithful/of_pvector.txt >> report.md
-              
+
               echo '## Results' >> report.md
               cml-publish metrics/old_faithful/of_dist.png --md >> report.md
               cml-send-comment report.md
