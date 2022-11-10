@@ -1,4 +1,3 @@
-#!env python3
 # AUTHOR INFORMATION ##########################################################
 # file    : test_bernstein_flow.py
 # brief   : [Description]
@@ -38,8 +37,6 @@ from bernstein_flow.activations import get_thetas_constrain_fn
 from bernstein_flow.bijectors import BernsteinBijectorLinearExtrapolate
 from bernstein_flow.distributions import BernsteinFlow
 
-tf.random.set_seed(42)
-
 
 def gen_pvs(batch_shape, order, dtype, seed):
     tf.random.set_seed(seed)
@@ -60,6 +57,7 @@ def gen_dist(batch_shape, order=5, dtype=tf.float32, seed=1, **kwds):
 
 class BernsteinFlowTest(tf.test.TestCase):
     def f(self, normal_dist, trans_dist):
+        tf.random.set_seed(42)
 
         dtype = normal_dist.dtype
         for input_shape in [[1], [1, 1], [1] + normal_dist.batch_shape]:

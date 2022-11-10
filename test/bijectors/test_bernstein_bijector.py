@@ -1,4 +1,3 @@
-#!env python3
 # AUTHOR INFORMATION ##########################################################
 # file    : test_bernstein_bijector.py
 # brief   : [Description]
@@ -35,12 +34,12 @@ from tensorflow_probability.python.internal import test_util
 from bernstein_flow.activations import get_thetas_constrain_fn
 from bernstein_flow.bijectors import BernsteinBijector
 
-tf.random.set_seed(42)
-
 
 @test_util.test_all_tf_execution_regimes
 class BernsteinBijectorTest(tf.test.TestCase):
     def f(self, batch_shape=[], x_shape=[100], order=10, dtype=tf.float32):
+        tf.random.set_seed(42)
+
         thetas_constrain_fn = get_thetas_constrain_fn()
         thetas = thetas_constrain_fn(tf.ones(batch_shape + [order], dtype=dtype))
         eps = 1e-2

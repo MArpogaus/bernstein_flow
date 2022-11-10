@@ -1,4 +1,3 @@
-#!env python3
 # AUTHOR INFORMATION ##########################################################
 # file    : test_bernstein_bijector.py
 # brief   : [Description]
@@ -40,12 +39,12 @@ from bernstein_flow.bijectors import (
     BernsteinBijectorLinearExtrapolate as BernsteinBijector,
 )
 
-tf.random.set_seed(42)
-
 
 @test_util.test_all_tf_execution_regimes
 class BernsteinBijectorTest(tf.test.TestCase):
     def f(self, batch_shape=[], x_shape=[100], order=10, dtype=tf.float32):
+        tf.random.set_seed(42)
+
         thetas_constrain_fn = get_thetas_constrain_fn(smooth_bounds=True)
         thetas = thetas_constrain_fn(tf.ones(batch_shape + [order], dtype=dtype))
         x = tf.random.uniform(x_shape, -1.0, 2.0, dtype=dtype)
