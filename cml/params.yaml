@@ -1,9 +1,8 @@
 bimodal:
   fit_kwds:
     output_shape: 20
-    bb_class: !!python/name:bernstein_flow.bijectors.bernstein_extra.BernsteinBijectorLinearExtrapolate
-    thetas_constrain_fn:
-      !!python/object/apply:bernstein_flow.activations.get_thetas_constrain_fn
+    bb_class: !%21python/name:bernstein_flow.bijectors.bernstein_extra.BernsteinBijectorLinearExtrapolate
+    thetas_constrain_fn: !!python/object/apply:bernstein_flow.activations.get_thetas_constrain_fn
       kwds:
         low: -3
         high: 3

@@ -13,16 +13,22 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
 ]
 dependencies = [
-        "tensorflow>=2.5.*, <2.10",
-        "tensorflow_probability>=0.13.*, <0.17",
-        "matplotlib",
+    "tensorflow>=2.5.*, <2.10",
+    "tensorflow_probability>=0.13.*, <0.17",
+    "matplotlib",
 ]
 dynamic = ["version"]
 
 [project.optional-dependencies]
 train = [
-  'pandas',
-  'PyYAML'
+    'pandas~=1.5',
+    'PyYAML~=6.0'
+]
+examples = [
+    'bernstein_flow[train]',
+    'scikit-learn~=1.1',
+    'seaborn~=0.12',
+    'jupyter-lab',
 ]
 develop = [
     'bernstein_flow[train]',
@@ -36,9 +42,6 @@ develop = [
     'python-lsp-server[all]',
 ]
 
-[tool.setuptools.dynamic]
-version = {attr = "bernstein_flow.__version__"}
-
 [tool.autoflake]
 check = true
 expand-star-imports = true
@@ -48,3 +51,6 @@ remove-all-unused-imports = true
 
 [tool.isort]
 profile = "black"
+
+[tool.setuptools.dynamic]
+version = {attr = "bernstein_flow.__version__"}
