@@ -1,4 +1,3 @@
-#!env python3
 # AUTHOR INFORMATION ##########################################################
 # file    : bernstein_flow_loss.py
 # brief   : [Description]

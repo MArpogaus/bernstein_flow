@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- time-stamp-pattern: "changed[\s]+:[\s]+%%$"; -*-
 # AUTHOR INFORMATION ##########################################################
 # file    : __init__.py

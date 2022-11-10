@@ -1,4 +1,3 @@
-#!env python3
 # AUTHOR INFORMATION ##########################################################
 # file    : visualization.py
 # brief   : [Description]
