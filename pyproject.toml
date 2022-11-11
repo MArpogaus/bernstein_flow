@@ -22,19 +22,20 @@ dynamic = ["version"]
 [project.optional-dependencies]
 train = [
     'pandas~=1.5',
-    'PyYAML~=6.0'
+    'PyYAML~=6.0',
 ]
 examples = [
     'bernstein_flow[train]',
+    'jupyterlab>=3.0.0,<4.0.0a0',
     'scikit-learn~=1.1',
     'seaborn~=0.12',
-    'jupyter-lab',
 ]
 develop = [
-    'bernstein_flow[train]',
+    'bernstein_flow[examples]',
     'autoflake',
     'black',
     'isort',
+    'jupyterlab-lsp',
     'pre-commit',
     'pytest',
     'pytest-xdist',
