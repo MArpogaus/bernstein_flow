@@ -42,7 +42,7 @@ from bernstein_flow.activations import get_thetas_constrain_fn
 from bernstein_flow.bijectors import BernsteinBijector
 
 
-def slice_parameter_vector(pvector: tf.Tensor, p_spec: dict = None) -> dict:
+def slice_parameter_vector(pvector: tf.Tensor, p_spec: dict) -> dict:
     """slices parameters of the given size form a tensor.
 
     :param pvector: The parameter vector.
@@ -54,16 +54,6 @@ def slice_parameter_vector(pvector: tf.Tensor, p_spec: dict = None) -> dict:
 
     """
     with tf.name_scope("slice_parameter_vectors"):
-        if p_spec is None:
-            shape = prefer_static.shape(pvector)
-            bernstein_order = shape[-1] - 3
-            p_spec = {
-                "a1": 1,
-                "b1": 1,
-                "thetas": bernstein_order,
-                "a2": 1,
-            }
-
         parameters = {}
         offset = 0
         for name, length in p_spec.items():
@@ -75,65 +65,40 @@ def slice_parameter_vector(pvector: tf.Tensor, p_spec: dict = None) -> dict:
         return parameters
 
 
-def ensure_positive(
-    x: tf.Tensor, fn=tf.math.softplus, min_value: float = 1e-2, name: str = None
-):
-    """Activation function which ensures that all given values are positive <= min_value.
-
-    :param x: Tensor to evaluate the function on.
-    :param min_value: minimum value (optional)
-      Default Value: 1e-2
-    :param name: name for the operation (optional)
-    :type name: str
-    :returns: Tensor with positive values
-
-    """
-    with tf.name_scope("ensure_positive"):
-        scale = tf.math.maximum(fn(x), min_value, name=name)
-        return scale
-
-
-def apply_activation(
-    thetas,
-    a1=None,
-    b1=None,
-    a2=None,
-    thetas_constrain_fn=get_thetas_constrain_fn(),
+def apply_constraining_bijectors(
+    unconstrained_parameters,
+    thetas_constrain_fn=None,
 ):
     """Apply activation functions to raw parameters.
 
-    :param thetas:  The Bernstein coefficients.
-    :type thetas:  Tensor
-    :param a1:     The unconstrained scale of f1.
-    :type a1:     Tensor
-    :param b1:     The shift of f1.
-    :type b1:     Tensor
-    :param a2:     The unconstrained scale of f3.
-    :type a2:     Tensor
     :param thetas_constrain_fn: Function used to constrain the Bernstein coefficients
 
     """
     with tf.name_scope("apply_activation"):
-        result = {}
-        if tf.is_tensor(a1):
-            result["a1"] = ensure_positive(a1, name="a1")
-        if tf.is_tensor(b1):
-            result["b1"] = tf.identity(b1, name="b1")
-        if tf.is_tensor(a2):
-            result["a2"] = ensure_positive(a2, min_value=1.0, name="a2")
+        parameters = {}
 
-        result["thetas"] = thetas_constrain_fn(thetas)
-        return result
+        for parameter_name, parameter in unconstrained_parameters.items():
+            if parameter_name == "thetas" and (thetas_constrain_fn is not None):
+                constraining_bijector = thetas_constrain_fn
+            else:
+                parameter_properties = BernsteinFlow.parameter_properties(
+                    dtype=parameter.dtype
+                )
+                properties = parameter_properties[parameter_name]
+                constraining_bijector = properties.default_constraining_bijector_fn()
+
+            parameters[parameter_name] = constraining_bijector(parameter)
+        return parameters
 
 
 def init_bijectors(
     thetas,
+    clip_to_bernstein_domain,
+    clip_base_distribution,
+    bb_class,
     a1=None,
     b1=None,
     a2=None,
-    clip_to_bernstein_domain=True,
-    clip_base_distribution=False,
-    bb_class=BernsteinBijector,
 ) -> tfb.Bijector:
     """
     Builds a normalizing flow using a Bernstein polynomial as Bijector.
@@ -256,15 +221,26 @@ class BernsteinFlow(tfd.TransformedDistribution):
 
             self._parameters = parameters
 
-    def _parameter_properties(self, dtype=None, num_classes=None):
+    @classmethod
+    def _parameter_properties(cls, dtype=None, num_classes=None):
         # Annotations may optionally specify properties, such as `event_ndims`,
         # `default_constraining_bijector_fn`, `specifies_shape`, etc.; see
         # the `ParameterProperties` documentation for details.
         return dict(
-            theta=tfp.util.ParameterProperties(),
+            a1=tfp.util.ParameterProperties(
+                default_constraining_bijector_fn=lambda: tfb.Softplus(
+                    low=dtype_util.eps(dtype)
+                )
+            ),
             b1=tfp.util.ParameterProperties(),
-            a2=tfp.util.ParameterProperties(),
-            a1=tfp.util.ParameterProperties(),
+            thetas=tfp.util.ParameterProperties(
+                default_constraining_bijector_fn=get_thetas_constrain_fn, event_ndims=1
+            ),
+            a2=tfp.util.ParameterProperties(
+                default_constraining_bijector_fn=lambda: tfb.Softplus(
+                    low=tf.cast(1.0, dtype)
+                )
+            ),
         )
 
     @classmethod
@@ -274,7 +250,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
         scale_data=True,
         shift_data=True,
         scale_base_distribution=True,
-        thetas_constrain_fn=get_thetas_constrain_fn(),
+        thetas_constrain_fn=None,
         **kwds,
     ):
         with tf.name_scope("from_pvector"):
@@ -304,8 +280,8 @@ class BernsteinFlow(tfd.TransformedDistribution):
 
             p_spec["thetas"] = bernstein_order
             return cls(
-                **apply_activation(
-                    **slice_parameter_vector(pvector, p_spec),
+                **apply_constraining_bijectors(
+                    unconstrained_parameters=slice_parameter_vector(pvector, p_spec),
                     thetas_constrain_fn=thetas_constrain_fn,
                 ),
                 **kwds,
