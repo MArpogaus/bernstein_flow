@@ -101,7 +101,6 @@ def gen_train_data(n=100):
 
 
 def gen_model(output_shape=9, **kwds):
-
     flow_parameter_model = Sequential(
         [
             Input(1),
@@ -327,7 +326,6 @@ if __name__ == "__main__":
         with mlflow.start_run(
             experiment_id=exp.experiment_id, nested=mlflow.active_run() is not None
         ):
-
             mlflow.log_param("seed", args.seed)
             mlflow.log_params(
                 dict(filter(lambda kw: not isinstance(kw[1], dict), params.items()))

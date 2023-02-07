@@ -111,7 +111,7 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
         thetas: tf.Tensor,
         clip_inverse=1.0e-6,
         name: str = "bernstein_bijector",
-        **kwds
+        **kwds,
     ):
         """
         Constructs a new instance of a Bernstein polynomial bijector.
@@ -170,7 +170,7 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
                 root_search_fn=root_search_fn,
                 max_iterations=50,
                 name=name,
-                **kwds
+                **kwds,
             )
 
     def _forward_log_det_jacobian(self, y):
