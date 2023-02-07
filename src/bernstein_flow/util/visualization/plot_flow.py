@@ -4,7 +4,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2022-06-01 15:21:22 (Marcel Arpogaus)
-# changed : 2022-11-11 11:30:18 (Marcel Arpogaus)
+# changed : 2023-02-07 09:37:46 (Marcel Arpogaus)
 # DESCRIPTION #################################################################
 #
 # This project is following the PEP8 style guide:
@@ -64,7 +64,8 @@ def get_annot_map(bijector_names, cnt=0):
 FORMULAS = {
     tfb.Scale: r"z_{{{curr}}} & = a_{{{curr}}}(\mathbf{{x}}) \cdot z_{{{prev}}}",
     tfb.Shift: r"z_{{{curr}}} & = z_{{{prev}}} + b_{{{curr}}}(\mathbf{{x}})",
-    BernsteinBijector: r"z_{{{curr}}} & = \frac{{1}}{{M+1}} \sum_{{i=0}}^{{M}} \operatorname{{Be}}_{{i}}^M(z_{{{prev}}}) \vartheta_{{i}}(\mathbf{{x}})",
+    BernsteinBijector: r"z_{{{curr}}} & = \frac{{1}}{{M+1}} \sum_{{i=0}}^{{M}}"
+    + r"\operatorname{{Be}}_{{i}}^M(z_{{{prev}}}) \vartheta_{{i}}(\mathbf{{x}})",
 }
 FORMULAS[BernsteinBijectorLinearExtrapolate] = FORMULAS[BernsteinBijector]
 
@@ -97,9 +98,9 @@ def split_bijector_names(bijector_names):
     return bijector_names[:bpoly_idx], bijector_names[bpoly_idx:]
 
 
-def get_intersec_reducer(l):
+def get_intersec_reducer(arr):
     def reducer(c, i):
-        if i in l:
+        if i in arr:
             return c + 1
         else:
             return c
@@ -264,14 +265,14 @@ def add_annot_to_axes(
     cp_kwds=dict(arrowstyle="-|>", shrinkA=10, shrinkB=10, color="gray"),
     usetex=True,
 ):
-
+    # add arrows for bijectors
     xyA = None
     axA = None
     z1 = plot_data["bijector"]["z1"]
     z2 = plot_data["bijector"]["z2"]
     i = int(len(z1) * pos)
-    z1 = z1[i]
-    z2 = z2[i]
+    z1 = z1[i].item()
+    z2 = z2[i].item()
     ax_names = pre_bpoly_trafos + ["bijector"] + post_bpoly_trafos + ["distribution"]
     ax_names = list(filter(lambda x: x in plot_data.keys(), ax_names))
     for kA, kB in zip(ax_names[:-1], ax_names[1:]):
@@ -314,6 +315,7 @@ def add_annot_to_axes(
         axB.figure.add_artist(tx)
         xyA = xyB
 
+    # add formulas
     ax = axs["math"]
     ax.text(0.5, 0.5, formuals, ha="center", va="center", usetex=usetex)
 
@@ -324,12 +326,13 @@ def add_annot_to_axes(
         facecolor="black",
     )
 
+    # annotate Bernstein polinomial
     k = "bijector"
     z1 = plot_data[k]["z1"]
     z2 = plot_data[k]["z2"]
     i = int(len(z1) * 0.9)
-    z1 = z1[i]
-    z2 = z2[i]
+    z1 = z1[i].item()
+    z2 = z2[i].item()
     ax = axs[k]
     ax.annotate(
         "Bernstein\nPolynomial",
@@ -348,12 +351,12 @@ def add_annot_to_axes(
         p = plot_data[k]["p"]
         arrowprops = common_arrowprops.copy()
         if k in pre_bpoly_trafos:
-            x = p[i]
-            y = z[i]
+            x = p[i].item()
+            y = z[i].item()
             arrowprops["connectionstyle"] = "arc3,rad=-0.5"
         else:
-            x = z[i]
-            y = p[i]
+            x = z[i].item()
+            y = p[i].item()
             arrowprops["connectionstyle"] = "arc3,rad=0.5"
         ax = axs[k]
         ax.annotate(
@@ -373,10 +376,10 @@ def add_annot_to_axes(
         arrowprops = common_arrowprops.copy()
         if k in pre_bpoly_trafos:
             x = 0
-            y = z[i]
+            y = z[i].item()
             arrowprops["connectionstyle"] = "arc3,rad=-0.5"
         else:
-            x = z[i]
+            x = z[i].item()
             y = 0
             arrowprops["connectionstyle"] = "arc3,rad=0.5"
         ax = axs[k]
