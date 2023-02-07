@@ -1,54 +1,59 @@
 [build-system]
-requires = ["setuptools >= 61.0.0"]
 build-backend = "setuptools.build_meta"
+requires = ["setuptools >= 61.0.0"]
 
 [project]
+classifiers = [
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9"
+]
+dependencies = [
+  "tensorflow>=2.5, <2.10",
+  "tensorflow_probability>=0.13, <0.17",
+  "matplotlib"
+]
+dynamic = ["version"]
+license = {text = "Apache Software License (Apache 2.0)"}
 name = "bernstein_flow"
 readme = "README.md"
 requires-python = ">=3.7, <3.10"
-license = {text = "Apache Software License (Apache 2.0)"}
-classifiers = [
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-]
-dependencies = [
-    "tensorflow>=2.5.*, <2.10",
-    "tensorflow_probability>=0.13.*, <0.17",
-    "matplotlib",
-]
-dynamic = ["version"]
 
 [project.optional-dependencies]
-train = [
-    'pandas~=1.5',
-    'PyYAML~=6.0',
+develop = [
+  'bernstein_flow[examples]',
+  'autoflake',
+  'black[jupyter]',
+  'isort',
+  'jupyterlab-lsp',
+  'pre-commit',
+  'pytest',
+  'pytest-xdist',
+  'python-lsp-black',
+  'python-lsp-server[all]',
+  'ipykernel',
+  'tox'
 ]
 examples = [
-    'bernstein_flow[train]',
-    'jupyterlab>=3.0.0,<4.0.0a0',
-    'scikit-learn~=1.1',
-    'seaborn~=0.12',
+  'bernstein_flow[train]',
+  'jupyterlab>=3.0.0,<4.0.0a0',
+  'scikit-learn~=1.1',
+  'seaborn~=0.12'
 ]
-develop = [
-    'bernstein_flow[examples]',
-    'autoflake',
-    'black',
-    'isort',
-    'jupyterlab-lsp',
-    'pre-commit',
-    'pytest',
-    'pytest-xdist',
-    'python-lsp-black',
-    'python-lsp-server[all]',
+train = [
+  'pandas~=1.5',
+  'PyYAML~=6.0'
 ]
 
 [tool.autoflake]
-check = true
 expand-star-imports = true
-remove-unused-variables = true
 ignore-init-module-imports = true
 remove-all-unused-imports = true
+remove-unused-variables = true
+
+[tool.black]
+# line-length = 88
+target-version = ['py38']
 
 [tool.isort]
 profile = "black"
