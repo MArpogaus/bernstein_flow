@@ -35,7 +35,7 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 from matplotlib.patches import ConnectionPatch
 
-from .plot_flow import plot_flow
+from .plot_flow import plot_flow  # noqa F401
 
 
 # function definitions ########################################################
