@@ -35,3 +35,5 @@ repos:
     args: [--autofix, --indent, '2']
   - id: pretty-format-toml
     args: [--autofix]
+  - id: pretty-format-ini
+    args: [--autofix]
