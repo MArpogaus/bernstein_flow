@@ -33,6 +33,8 @@ repos:
   hooks:
   - id: pretty-format-yaml
     args: [--autofix, --indent, '2']
+    # exclude until formatter problem is fixed
+    exclude: cml/params.yaml
   - id: pretty-format-toml
     args: [--autofix]
   - id: pretty-format-ini
