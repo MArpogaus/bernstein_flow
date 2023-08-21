@@ -17,18 +17,16 @@ dynamic = ["version"]
 license = {text = "Apache Software License (Apache 2.0)"}
 name = "bernstein_flow"
 readme = "README.md"
-requires-python = ">=3.7, <3.10"
+requires-python = ">=3.7, <3.11"
 
 [project.optional-dependencies]
 develop = [
-  'bernstein_flow[examples]',
+  'bernstein_flow[examples,test]',
   'autoflake',
   'black[jupyter]',
   'isort',
   'jupyterlab-lsp',
   'pre-commit',
-  'pytest',
-  'pytest-xdist',
   'python-lsp-black',
   'python-lsp-server[all]',
   'ipykernel',
@@ -39,6 +37,11 @@ examples = [
   'jupyterlab>=3.0.0,<4.0.0a0',
   'scikit-learn~=1.1',
   'seaborn~=0.12'
+]
+test = [
+  'pytest',
+  'pytest-xdist',
+  'scipy'
 ]
 train = [
   'pandas~=1.5',
