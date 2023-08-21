@@ -1,23 +1,20 @@
 name: train and evaluate old faithful model
-
 on: [push]
-
 jobs:
   run:
-    runs-on: [ubuntu-latest]
-
+    runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-
-    - uses: iterative/setup-cml@v1
-
-    - uses: actions/setup-python@v2
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
       with:
-        python-version: '3.8'
-
+        python-version: '3.9'
+    - uses: actions/setup-node@v1
+      with:
+        node-version: '16'
+    - uses: iterative/setup-cml@v1
     - name: cml
       env:
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         pip install '.[train]'
         python cml/old_faithful.py
