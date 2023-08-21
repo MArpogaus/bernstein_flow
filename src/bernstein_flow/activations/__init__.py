@@ -52,13 +52,14 @@ def get_thetas_constrain_fn(
                 axis=-1,
             )
 
+        diff_positive = tf.maximum(diff_positive, eps)
         diff_positive /= tf.reduce_sum(diff_positive, -1)[..., None]
         diff_positive *= high_theta - low_theta
 
         c = tf.concat(
             (
                 theta0,
-                tf.maximum(diff_positive, eps),
+                diff_positive,
             ),
             axis=-1,
         )
