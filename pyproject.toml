@@ -9,8 +9,8 @@ classifiers = [
   "Programming Language :: Python :: 3.9"
 ]
 dependencies = [
-  "tensorflow>=2.5, <2.10",
-  "tensorflow_probability>=0.13, <0.17",
+  "tensorflow>=2.5, <2.14",
+  "tensorflow_probability>=0.13, <0.22",
   "matplotlib"
 ]
 dynamic = ["version"]
