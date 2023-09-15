@@ -123,12 +123,12 @@ def init_bijectors(
         bijectors = []
 
         # f1: ŷ = sigma(a1(x)*y - b1(x))
-        if tf.is_tensor(a1):
-            f1_scale = tfb.Scale(a1, name="scale1")
-            bijectors.append(f1_scale)
         if tf.is_tensor(b1):
             f1_shift = tfb.Shift(b1, name="shift1")
             bijectors.append(f1_shift)
+        if tf.is_tensor(a1):
+            f1_scale = tfb.Scale(a1, name="scale1")
+            bijectors.append(f1_scale)
 
         # clip to domain [0, 1]
         if clip_to_bernstein_domain:

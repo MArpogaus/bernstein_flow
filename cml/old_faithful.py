@@ -149,8 +149,8 @@ with open(result_path + "of_metrics.txt", "w") as metrics:
 
 a2 = flow.bijector.bijector.bijectors[0].scale
 thetas = flow.bijector.bijector.bijectors[1].thetas
-b1 = flow.bijector.bijector.bijectors[3].shift
-a1 = flow.bijector.bijector.bijectors[4].scale
+a1 = flow.bijector.bijector.bijectors[3].scale
+b1 = flow.bijector.bijector.bijectors[4].shift
 
 
 with open(result_path + "of_pvector.txt", "w") as pvector:
