@@ -10,9 +10,12 @@
 # LICENSE #####################################################################
 # ...
 ###############################################################################
-
 import tensorflow as tf
-from tensorflow_probability.python.internal import dtype_util, tensor_util
+from tensorflow_probability.python.internal import (
+    dtype_util,
+    prefer_static,
+    tensor_util,
+)
 
 
 def get_thetas_constrain_fn(
@@ -54,7 +57,12 @@ def get_thetas_constrain_fn(
 
         diff_positive = tf.maximum(diff_positive, eps)
         diff_positive /= tf.reduce_sum(diff_positive, -1)[..., None]
-        diff_positive *= high_theta - low_theta
+        diff_positive *= (
+            high_theta
+            - low_theta
+            - tf.cast(prefer_static.dimension_size(diff_positive, -1) + 1, dtype) * eps
+        )
+        diff_positive += eps
 
         c = tf.concat(
             (
