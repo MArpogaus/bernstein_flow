@@ -156,8 +156,8 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
                     iteration,
                 ) = tfp.math.find_root_chandrupatla(
                     objective_fn,
-                    low=self.z_min,
-                    high=self.z_max,
+                    low=tf.convert_to_tensor(0, dtype=dtype),
+                    high=tf.convert_to_tensor(1, dtype=dtype),
                     position_tolerance=1e-6,
                     # value_tolerance=1e-7,
                     max_iterations=max_iterations,
@@ -183,10 +183,6 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
         dz_dy = self._bernstein_polynom_jacobean(y)
         ldj = tf.math.log(dz_dy)
         return reshape_out(batch_shape, sample_shape, ldj)
-
-    def inverse(self, z):
-        y = super().inverse(z)
-        return tf.clip_by_value(y, self.clip_inverse, 1.0 - self.clip_inverse)
 
     def _is_increasing(self, **kwargs):
         return tf.reduce_all(self.thetas[..., 1:] >= self.thetas[..., :-1])
