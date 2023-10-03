@@ -161,6 +161,39 @@ def init_bijectors(
         return tfb.Invert(tfb.Chain(bijectors))
 
 
+def get_base_distribution(base_distribution, dtype, **kwds):
+    if isinstance(base_distribution, tfd.Distribution):
+        return base_distribution
+    else:
+        if base_distribution == "normal":
+            default_kwds = dict(loc=tf.convert_to_tensor(0, dtype=dtype), scale=1.0)
+            default_kwds.update(**kwds)
+            dist = tfd.Normal(**default_kwds)
+        elif base_distribution == "truncated_normal":
+            default_kwds = dict(
+                loc=tf.convert_to_tensor(0, dtype=dtype), scale=1.0, low=-4, high=4
+            )
+            default_kwds.update(**kwds)
+            dist = tfd.TruncatedNormal(**default_kwds)
+        elif base_distribution == "log_normal":
+            default_kwds = dict(loc=tf.convert_to_tensor(0, dtype=dtype), scale=1.0)
+            default_kwds.update(**kwds)
+            dist = tfd.LogNormal(**default_kwds)
+        elif base_distribution == "logistic":
+            default_kwds = dict(loc=tf.convert_to_tensor(0, dtype=dtype), scale=1.0)
+            default_kwds.update(**kwds)
+            dist = tfd.Logistic(**default_kwds)
+        elif base_distribution == "uniform":
+            default_kwds = dict(low=tf.convert_to_tensor(0, dtype=dtype), high=1.0)
+            default_kwds.update(**kwds)
+            dist = tfd.Uniform(**default_kwds)
+        elif base_distribution == "kumaraswamy":
+            dist = tfd.Kumaraswamy(**kwds)
+        else:
+            raise ValueError(f"Unsupported distribution type {base_distribution}.")
+    return dist
+
+
 class BernsteinFlow(tfd.TransformedDistribution):
     """
     This class implements a `tfd.TransformedDistribution` using Bernstein
@@ -174,6 +207,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
         b1=None,
         a2=None,
         base_distribution=None,
+        base_distribution_kwds={},
         clip_to_bernstein_domain=True,
         clip_base_distribution=False,
         bb_class=BernsteinBijector,
@@ -199,9 +233,16 @@ class BernsteinFlow(tfd.TransformedDistribution):
             shape = prefer_static.shape(thetas)
 
             if base_distribution is None:
-                base_distribution = tfd.Normal(
-                    loc=tf.zeros(shape[:-1], dtype=dtype), scale=1.0
-                )
+                if bb_class == BernsteinBijector:
+                    base_distribution = get_base_distribution(
+                        "truncated_normal", dtype, **base_distribution_kwds
+                    )
+                else:
+                    base_distribution = get_base_distribution(
+                        "normal", dtype, **base_distribution_kwds
+                    )
+            else:
+                base_distribution = get_base_distribution(base_distribution, dtype)
 
             bijector = init_bijectors(
                 thetas,

@@ -56,15 +56,15 @@ def gen_dist(batch_shape, order=5, dtype=tf.float32, seed=1, **kwds):
 
 
 class BernsteinFlowTest(tf.test.TestCase):
-    def f(self, normal_dist, trans_dist):
+    def f(self, normal_dist, trans_dist, stay_in_domain=False):
         tf.random.set_seed(42)
 
         dtype = normal_dist.dtype
         for input_shape in [[1], [1, 1], [1] + normal_dist.batch_shape]:
             x = tf.random.uniform(
                 shape=[10] + normal_dist.batch_shape,
-                minval=-100,
-                maxval=100,
+                minval=0 if stay_in_domain else -100,
+                maxval=1 if stay_in_domain else 100,
                 dtype=dtype,
             )
 
@@ -86,12 +86,12 @@ class BernsteinFlowTest(tf.test.TestCase):
             # check the Normalization
             self.assertAllClose(
                 normal_dist.cdf(normal_dist.dtype.min),
-                trans_dist.cdf(trans_dist.dtype.min),
+                trans_dist.cdf(0.0 if stay_in_domain else trans_dist.dtype.min),
                 atol=1e-3,
             )
             self.assertAllClose(
                 normal_dist.cdf(normal_dist.dtype.max),
-                trans_dist.cdf(trans_dist.dtype.max),
+                trans_dist.cdf(1.0 if stay_in_domain else trans_dist.dtype.max),
                 atol=1e-3,
             )
 
@@ -153,14 +153,13 @@ for dtype in [tf.float32, tf.float64]:
     @pytest.mark.skip
     def test_log_normal(self):
         batch_shape = [16, 10]
-        log_normal = tfd.LogNormal(loc=tf.zeros(batch_shape, dtype=dtype), scale=1.0)
         normal_dist, trans_dist = gen_dist(
             batch_shape=batch_shape,
             order=10,
             dtype=dtype,
-            base_distribution=log_normal,
+            base_distribution="log_normal",
             thetas_constrain_fn=get_thetas_constrain_fn(
-                low=1e-10, high=tf.math.exp(tf.constant(4.0, dtype=dtype))
+                low=1e-12, high=tf.math.exp(tf.constant(6.0, dtype=dtype))
             ),
             scale_base_distribution=True,
         )
@@ -169,34 +168,55 @@ for dtype in [tf.float32, tf.float64]:
     @pytest.mark.skip
     def test_logistic(self):
         batch_shape = [16, 10]
-        logistic = tfd.Logistic(loc=tf.zeros(batch_shape, dtype=dtype), scale=1)
         normal_dist, trans_dist = gen_dist(
             batch_shape=batch_shape,
             order=10,
             dtype=dtype,
-            base_distribution=logistic,
+            base_distribution="logistic",
+            bb_class=BernsteinBijectorLinearExtrapolate,
             thetas_constrain_fn=get_thetas_constrain_fn(
-                low=-8, high=8, allow_flexible_bounds=True
+                low=-20, high=20, allow_flexible_bounds=True
             ),
-            scale_base_distribution=True,
+            scale_base_distribution=False,
+            clip_to_bernstein_domain=False,
         )
         self.f(normal_dist, trans_dist)
 
     @pytest.mark.skip
     def test_uniform(self):
         batch_shape = [16, 10]
-        uniform = tfd.Uniform(
-            -tf.ones(batch_shape, dtype=dtype), tf.ones(batch_shape, dtype=dtype)
-        )
         normal_dist, trans_dist = gen_dist(
             batch_shape=batch_shape,
             order=10,
             dtype=dtype,
-            base_distribution=uniform,
-            thetas_constrain_fn=get_thetas_constrain_fn(low=-1.0, high=1.0),
+            base_distribution="uniform",
+            thetas_constrain_fn=get_thetas_constrain_fn(low=0.0, high=1.0),
+            clip_to_bernstein_domain=False,
             scale_base_distribution=False,
+            shift_data=False,
+            scale_data=False,
         )
-        self.f(normal_dist, trans_dist)
+        self.f(normal_dist, trans_dist, stay_in_domain=True)
+
+    @pytest.mark.skip
+    def test_kumaraswamy(self):
+        batch_shape = [16, 10]
+        normal_dist, trans_dist = gen_dist(
+            batch_shape=batch_shape,
+            order=10,
+            dtype=dtype,
+            base_distribution="kumaraswamy",
+            base_distribution_kwds={
+                "concentration1": tf.convert_to_tensor(5.0, dtype),
+                "concentration0": 2.0,
+            },
+            thetas_constrain_fn=get_thetas_constrain_fn(low=0.0, high=1.0),
+            clip_to_bernstein_domain=False,
+            scale_base_distribution=False,
+            shift_data=False,
+            scale_data=False,
+        )
+        self.f(normal_dist, trans_dist, stay_in_domain=True)
 
     @pytest.mark.skip
     def test_student_t(self):
