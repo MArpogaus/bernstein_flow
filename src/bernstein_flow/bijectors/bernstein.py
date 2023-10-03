@@ -109,7 +109,6 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
     def __init__(
         self,
         thetas: tf.Tensor,
-        clip_inverse=1.0e-6,
         name: str = "bernstein_bijector",
         **kwds,
     ):
@@ -131,9 +130,6 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
             self.thetas = tensor_util.convert_nonref_to_tensor(
                 thetas, name="thetas", dtype=dtype
             )
-            self.clip_inverse = tensor_util.convert_nonref_to_tensor(
-                clip_inverse, dtype=dtype
-            )
 
             theta_shape = prefer_static.shape(self.thetas)
             self.order = theta_shape[-1]
@@ -144,7 +140,6 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
             b_poly = bernstein_polynom(self.thetas)
             self._bernstein_polynom_jacobean = bernstein_polynom_jacobean(self.thetas)
 
-            # clip = 1.0e-9
             domain_constraint_fn = partial(
                 tf.clip_by_value, clip_value_min=0.0, clip_value_max=1.0
             )

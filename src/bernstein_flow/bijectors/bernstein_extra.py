@@ -5,7 +5,7 @@ from . import BernsteinBijector
 
 class BernsteinBijectorLinearExtrapolate(BernsteinBijector):
     def __init__(self, *args, **kwds):
-        super().__init__(*args, clip_inverse=0.0, **kwds)
+        super().__init__(*args, **kwds)
         # save slope on boundaries for interpolation
         self.z_min = tf.math.reduce_min(self.thetas, axis=-1)
         self.z_max = tf.math.reduce_max(self.thetas, axis=-1)
