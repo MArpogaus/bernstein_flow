@@ -4,7 +4,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2022-03-10 15:39:04 (Marcel Arpogaus)
-# changed : 2022-09-01 14:34:32 (Marcel Arpogaus)
+# changed : 2023-10-03 14:02:10 (Marcel Arpogaus)
 # DESCRIPTION #################################################################
 # ...
 # LICENSE #####################################################################
@@ -19,8 +19,8 @@ from tensorflow_probability.python.internal import (
 
 
 def get_thetas_constrain_fn(
-    low=None,
-    high=None,
+    low=-4,
+    high=4,
     smooth_bounds=False,
     allow_flexible_bounds=False,
     fn=tf.math.softplus,
@@ -53,7 +53,7 @@ def get_thetas_constrain_fn(
                 diff = diff[..., 1:]
 
         diff_positive = fn(diff)
-
+        diff_positive = tf.maximum(diff_positive, eps)
         if smooth_bounds:
             low2 = diff_positive[..., :1]
             high2 = diff_positive[..., -1:]
@@ -66,13 +66,14 @@ def get_thetas_constrain_fn(
                 axis=-1,
             )
 
-        diff_positive = tf.maximum(diff_positive, eps)
+        # diff_positive = tf.maximum(diff_positive, eps)
         if tf.is_tensor(high_theta):
             diff_positive /= tf.reduce_sum(diff_positive, -1)[..., None]
             diff_positive *= (
                 high_theta
                 - low_theta
-                - tf.cast(prefer_static.dimension_size(diff_positive, -1), dtype) * eps
+                - tf.cast(prefer_static.dimension_size(diff_positive, -1) + 1, dtype)
+                * eps
             )
             diff_positive += eps
 
@@ -83,6 +84,14 @@ def get_thetas_constrain_fn(
             ),
             axis=-1,
         )
-        return tf.cumsum(c, axis=-1, name="theta")
+        thetas_constrained = tf.cumsum(c, axis=-1, name="theta")
+
+        # if not tf.reduce_any(tf.math.is_finite(thetas_constrained)):
+        #     tf.print(thetas_constrained)
+        #     tf.print(diff)
+        #     tf.print(diff_positive)
+        #     raise ValueError("Thetas contain infinite values")
+
+        return thetas_constrained
 
     return constrain_fn
