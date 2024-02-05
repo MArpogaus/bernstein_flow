@@ -205,7 +205,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
         a1=None,
         b1=None,
         a2=None,
-        base_distribution=None,
+        base_distribution="normal",
         base_distribution_kwds={},
         clip_to_bernstein_domain=True,
         clip_base_distribution=False,
