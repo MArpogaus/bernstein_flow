@@ -1,4 +1,3 @@
-#!env python3
 # AUTHOR INFORMATION ##########################################################
 # file    : bernstein_bijector.py
 # brief   : [Description]
@@ -32,13 +31,17 @@
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from tensorflow_probability.python.internal import (dtype_util, prefer_static,
-                                                    tensor_util)
+from tensorflow_probability.python.internal import (
+    dtype_util,
+    prefer_static,
+    tensor_util,
+)
 
 from bernstein_flow.math.bernstein import (
-    gen_bernstein_polynomial, gen_bernstein_polynomial_with_linear_extension,
+    gen_bernstein_polynomial_with_linear_extension,
     gen_bernstein_polynomial_with_linear_extrapolation,
-    gen_bernstein_polynomial_with_quadratic_extrapolation)
+    gen_bernstein_polynomial_with_quadratic_extrapolation,
+)
 
 
 def reshape_out(batch_shape, sample_shape, y):

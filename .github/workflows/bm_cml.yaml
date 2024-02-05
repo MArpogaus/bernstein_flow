@@ -1,53 +1,52 @@
-name: "train and evaluate bimodal model"
-
+name: train and evaluate bimodal model
 on: [push]
-
 jobs:
   run:
-    runs-on: [ubuntu-latest]
-
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    - uses: actions/setup-node@v1
+      with:
+        node-version: '16'
+    - uses: iterative/setup-cml@v1
+    - name: Install TeXlive
+      run: sudo apt-get update && sudo apt-get install texlive texlive-science texlive-latex-extra cm-super dvipng
+    - name: cml
+      env:
+        REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        pip install '.[train]'
+        python cml/bimodal.py
 
-      - uses: iterative/setup-cml@v1
+        echo '# Bimodal Model' >> report.md
 
-      - uses: actions/setup-python@v2
-        with:
-          python-version: "3.8"
-      - name: Install TeXlive
-        run: sudo apt-get update && sudo apt-get install texlive texlive-science texlive-latex-extra cm-super dvipng
-      - name: cml
-        env:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          pip install .
-          pip install pandas pyyaml
-          python cml/bimodal.py
+        echo '## Learning Curve' >> report.md
+        echo '![](./artifacts/bimodal/bm_data.png)' >> report.md
 
-          echo '# Bimodal Model' >> report.md
+        echo '## Learning Curve' >> report.md
+        echo '![](./artifacts/bimodal/bm_hist.png)' >> report.md
 
-          echo '## Learning Curve' >> report.md
-          cml-publish artifacts/bimodal/bm_data.png --md >> report.md
+        echo '## Metrics' >> report.md
+        echo '```yaml' >> report.md
+        cat metrics/bimodal/bm_metrics.yaml >> report.md
+        echo '```' >> report.md
 
-          echo '## Learning Curve' >> report.md
-          cml-publish artifacts/bimodal/bm_hist.png --md >> report.md
+        echo '## Results' >> report.md
+        echo '![](./artifacts/bimodal/bm_dists.png)' >> report.md
 
-          echo '## Metrics' >> report.md
-          cat metrics/bimodal/bm_metrics.yaml >> report.md
+        echo '## Parameter Vector for x = 1' >> report.md
+        cat artifacts/bimodal/bm_pvector.txt >> report.md
 
-          echo '## Results' >> report.md
-          cml-publish artifacts/bimodal/bm_dists.png --md >> report.md
+        echo '## Flow' >> report.md
+        echo '![](./artifacts/bimodal/bm_flow.png)' >> report.md
+        echo '![](./artifacts/bimodal/bm_bijectors.png)' >> report.md
+        echo '![](./artifacts/bimodal/bm_x_trafo.png)' >> report.md
 
-          echo '## Parameter Vector for x = 1' >> report.md
-          cat artifacts/bimodal/bm_pvector.txt >> report.md
+        echo '## Bijector' >> report.md
+        echo '![](./artifacts/bimodal/bm_bijector.png)' >> report.md
+        echo '![](./artifacts/bimodal/bm_ildj.png)' >> report.md
 
-          echo '## Flow' >> report.md
-          cml-publish artifacts/bimodal/bm_flow.png --md >> report.md
-          cml-publish artifacts/bimodal/bm_bijectors.png --md >> report.md
-          cml-publish artifacts/bimodal/bm_x_trafo.png --md >> report.md
-
-          echo '## Bijector' >> report.md
-          cml-publish artifacts/bimodal/bm_bijector.png --md >> report.md
-          cml-publish artifacts/bimodal/bm_ildj.png --md >> report.md
-
-          cml-send-comment report.md
+        cml comment create report.md

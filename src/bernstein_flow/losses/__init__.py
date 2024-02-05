@@ -1,1 +1,1 @@
-from .bernstein_flow_loss import BernsteinFlowLoss
+from .bernstein_flow_loss import BernsteinFlowLoss  # noqa F401

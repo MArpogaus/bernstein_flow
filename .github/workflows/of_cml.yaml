@@ -1,39 +1,35 @@
-name: "train and evaluate old faithful model"
-
+name: train and evaluate old faithful model
 on: [push]
-
 jobs:
   run:
-    runs-on: [ubuntu-latest]
-
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    - uses: actions/setup-node@v1
+      with:
+        node-version: '16'
+    - uses: iterative/setup-cml@v1
+    - name: cml
+      env:
+        REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        pip install '.[train]'
+        python cml/old_faithful.py
 
-      - uses: iterative/setup-cml@v1
+        echo '# Old Faithful' >> report.md
 
-      - uses: actions/setup-python@v2
-        with:
-          python-version: '3.8'
+        echo '## Learning Curve' >> report.md
+        echo '![](metrics/old_faithful/of_hist.png)' >> report.md
 
-      - name: cml
-        env:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-              pip install .
-              pip install pandas
-              python cml/old_faithful.py
+        echo '## Metrics' >> report.md
+        cat metrics/old_faithful/of_metrics.txt >> report.md
 
-              echo '# Old Faithful' >> report.md
-              
-              echo '## Learning Curve' >> report.md
-              cml-publish metrics/old_faithful/of_hist.png --md >> report.md
+        echo '## Parameter Vector' >> report.md
+        cat metrics/old_faithful/of_pvector.txt >> report.md
 
-              echo '## Metrics' >> report.md
-              cat metrics/old_faithful/of_metrics.txt >> report.md
-              
-              echo '## Parameter Vector' >> report.md
-              cat metrics/old_faithful/of_pvector.txt >> report.md
-              
-              echo '## Results' >> report.md
-              cml-publish metrics/old_faithful/of_dist.png --md >> report.md
-              cml-send-comment report.md
+        echo '## Results' >> report.md
+        echo '![](metrics/old_faithful/of_dist.png)' >> report.md
+        cml comment create report.md

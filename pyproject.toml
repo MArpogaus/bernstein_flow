@@ -1,0 +1,66 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools >= 61.0.0"]
+
+[project]
+classifiers = [
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10"
+]
+dependencies = [
+  "tensorflow>=2.5, <2.10",
+  "tensorflow_probability>=0.13, <0.17",
+  "matplotlib"
+]
+dynamic = ["version"]
+license = {text = "Apache Software License (Apache 2.0)"}
+name = "bernstein_flow"
+readme = "README.md"
+requires-python = ">=3.7, <3.11"
+
+[project.optional-dependencies]
+develop = [
+  'bernstein_flow[examples,test]',
+  'autoflake',
+  'black[jupyter]',
+  'isort',
+  'jupyterlab-lsp',
+  'pre-commit',
+  'python-lsp-black',
+  'python-lsp-server[all]',
+  'ipykernel',
+  'tox'
+]
+examples = [
+  'bernstein_flow[train]',
+  'jupyterlab>=3.0.0,<4.0.0a0',
+  'scikit-learn~=1.1',
+  'seaborn~=0.12'
+]
+test = [
+  'pytest',
+  'pytest-xdist',
+  'scipy'
+]
+train = [
+  'pandas~=1.5',
+  'PyYAML~=6.0'
+]
+
+[tool.autoflake]
+expand-star-imports = true
+ignore-init-module-imports = true
+remove-all-unused-imports = true
+remove-unused-variables = true
+
+[tool.black]
+# line-length = 88
+target-version = ['py38']
+
+[tool.isort]
+profile = "black"
+
+[tool.setuptools.dynamic]
+version = {attr = "bernstein_flow.__version__"}

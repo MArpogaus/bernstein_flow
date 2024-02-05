@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 # -*- time-stamp-pattern: "changed[\s]+:[\s]+%%$"; -*-
-# AUTHOR INFORMATION ###########################################################
+# AUTHOR INFORMATION #####################################################
 # file    : old_faithful.py
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2021-03-22 11:14:00 (Marcel Arpogaus)
-# changed : 2022-05-21 08:45:57 (Marcel Arpogaus)
-# DESCRIPTION ##################################################################
+# changed : 2023-02-07 08:31:36 (Marcel Arpogaus)
+# DESCRIPTION ############################################################
 # ...
-# LICENSE ######################################################################
+# LICENSE ################################################################
 # ...
-################################################################################
+##########################################################################
 
 import os
 
@@ -36,9 +36,13 @@ def negloglik(y_true, y_hat):
     return nll
 
 
-# Data
-# Extracted from the [built-in dataset in R](https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/faithful.html).
-# Reference:  A. Azzalini and A. W. Bowman, “A Look at Some Data on the Old Faithful Geyser,” Journal of the Royal Statistical Society. Series C (Applied Statistics), vol. 39, no. 3, pp. 357–365, 1990, doi: 10.2307/2347385.
+# Data extracted from
+# https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/faithful.html.
+#
+# Reference:  A. Azzalini and A. W. Bowman, “A Look at Some Data on the
+# Old Faithful Geyser,” Journal of the Royal Statistical Society. Series C
+# (Applied Statistics), vol. 39, no. 3, pp. 357–365, 1990, doi:
+# 10.2307/2347385.
 y = np.asarray(
     (
         # fmt: off
@@ -145,8 +149,8 @@ with open(result_path + "of_metrics.txt", "w") as metrics:
 
 a2 = flow.bijector.bijector.bijectors[0].scale
 thetas = flow.bijector.bijector.bijectors[1].thetas
-b1 = flow.bijector.bijector.bijectors[3].shift
-a1 = flow.bijector.bijector.bijectors[4].scale
+a1 = flow.bijector.bijector.bijectors[3].scale
+b1 = flow.bijector.bijector.bijectors[4].shift
 
 
 with open(result_path + "of_pvector.txt", "w") as pvector:

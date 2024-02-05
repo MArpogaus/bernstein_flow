@@ -1,11 +1,10 @@
-#!/usr/bin/env python3
 # -*- time-stamp-pattern: "changed[\s]+:[\s]+%%$"; -*-
 # AUTHOR INFORMATION ##########################################################
 # file    : __init__.py
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2022-03-10 15:39:04 (Marcel Arpogaus)
-# changed : 2022-05-24 12:41:04 (Marcel Arpogaus)
+# changed : 2024-02-05 15:04:16 (Marcel Arpogaus)
 # DESCRIPTION #################################################################
 # ...
 # LICENSE #####################################################################
@@ -24,15 +23,16 @@ def get_thetas_constrain_fn(
 ):
     """Ensures monotone increasing Bernstein coefficients.
 
-    :param support: Support of the base distribution. Parameters are scaled to this range.
+    :param support: Support of the base distribution.
+      Parameters are scaled to this range.
     :param fn: Function to ensure positive values.
     :param allow_values_outside_support: Use the first and last parameter to
       increase/decrease the upper/lower bound.
-    :param constrain_second_drivative: Apply extra contain w.r.t. second derivative ot the polynomial.
-                                       Posible values are:
-                                        - None: dont apply any constrain
-                                        - zero: force second derivative to be zero on boundaries
-                                        - turn: force a turning-point on the boundaries
+    :param constrain_second_drivative: Apply extra contain w.r.t. second derivative
+      of the polynomial. Possible values are:
+       - None: dont apply any constrain
+       - zero: force second derivative to be zero on boundaries
+       - turn: force a turning-point on the boundaries
     :returns:   Monotone increasing Bernstein coefficients.
     :rtype:     Tensor
 
@@ -67,12 +67,15 @@ def get_thetas_constrain_fn(
                 high2 = diff_positive[..., -1:]
             elif constrain_second_drivative == "turn":
                 diff_positive = diff_positive[..., 1:-1]
+
                 low2 = diff_positive[..., :1] + fn(diff[..., :1])
                 high2 = diff_positive[..., -1:] + fn(diff[..., -1:])
             else:
                 raise ValueError(
-                    f'Unsupported value "{constrain_second_drivative}" for constrain_second_drivative'
+                    f'Unsupported value "{constrain_second_drivative}" '
+                    "for constrain_second_drivative"
                 )
+
             diff_positive = tf.concat(
                 (
                     low2,

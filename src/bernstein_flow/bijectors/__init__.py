@@ -1,1 +1,1 @@
-from .bernstein import BernsteinBijector
+from .bernstein import BernsteinBijector  # noqa F401

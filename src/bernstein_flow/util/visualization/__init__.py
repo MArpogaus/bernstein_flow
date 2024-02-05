@@ -1,4 +1,3 @@
-#!env python3
 # AUTHOR INFORMATION ##########################################################
 # file    : visualization.py
 # brief   : [Description]
@@ -30,14 +29,13 @@
 # REQUIRED PYTHON MODULES #####################################################
 
 import matplotlib.gridspec as gridspec
-
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
 from matplotlib.patches import ConnectionPatch
 
-from .plot_flow import plot_flow
+from .plot_flow import plot_flow  # noqa F401
 
 
 # function definitions ########################################################

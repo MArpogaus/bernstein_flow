@@ -4,6 +4,7 @@
 [![Issues][issues-shield]][issues-url]
 [![Apache License 2.0][license-shield]][license-url]
 [![LinkedIn][linkedin-shield]][linkedin-url]
+[![pre-commit][pre-commit-shield]][pre-commit-url]
 
 # Bernstein-Polynomials as TensorFlow Probability Bijector
 
@@ -72,7 +73,7 @@ For completeness, these are the packages used in the implementation:
 
 ## Usage
 
-### Package Structure 
+### Package Structure
 
 This python package consists of four main components:
 
@@ -114,7 +115,7 @@ flow_model = tf.keras.Sequential()
 flow_model.add(InputLayer(input_shape = (1)))
 #Here could come a gigantus network
 flow_model.add(Dense(4 + 5)) # Bernstein coefficients and 2 times scale and shift
-flow_model.add(tfp.layers.DistributionLambda(BernsteinFlow))
+flow_model.add(tfp.layers.DistributionLambda(BernsteinFlow.from_pvector))
 ```
 
 ## Examples
@@ -152,6 +153,8 @@ Distributed under the [Apache License 2.0](LICENSE)
 [license-url]: https://github.com/MArpogaus/TensorFlow-Probability-Bernstein-Polynomial-Bijector/blob/master/LICENSE
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=flat-square&logo=linkedin&colorB=555
 [linkedin-url]: https://linkedin.com/in/MArpogaus
+[pre-commit-shield]: https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit
+[pre-commit-url]: https://github.com/pre-commit/pre-commit
 [bijector]: https://www.tensorflow.org/probability/api_docs/python/tfp/bijectors/Bijector
 [tensorflow-probability]: https://www.tensorflow.org/probability
 [matplotlib]: https://matplotlib.org/

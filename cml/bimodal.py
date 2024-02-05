@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 # -*- time-stamp-pattern: "changed[\s]+:[\s]+%%$"; -*-
-# AUTHOR INFORMATION ###########################################################
+# AUTHOR INFORMATION #####################################################
 # file    : bimodal.py
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2021-03-22 16:42:31 (Marcel Arpogaus)
-# changed : 2022-06-10 14:27:10 (Marcel Arpogaus)
-# DESCRIPTION ##################################################################
+# changed : 2022-08-31 17:27:02 (Marcel Arpogaus)
+# DESCRIPTION ############################################################
 # ...
-# LICENSE ######################################################################
+# LICENSE ################################################################
 # ...
-################################################################################
+##########################################################################
 import argparse
 import os
 from functools import partial
@@ -27,10 +27,12 @@ from tensorflow_probability import bijectors as tfb
 from tensorflow_probability import distributions as tfd
 
 from bernstein_flow.distributions import BernsteinFlow
-from bernstein_flow.util.visualization import (plot_chained_bijectors,
-                                               plot_value_and_gradient,
-                                               plot_x_trafo, plot_flow,
-                                               vizualize_flow_from_z_domain)
+from bernstein_flow.util.visualization import (
+    plot_chained_bijectors,
+    plot_flow,
+    plot_value_and_gradient,
+    plot_x_trafo,
+)
 
 try:
     import mlflow
@@ -99,7 +101,6 @@ def gen_train_data(n=100):
 
 
 def gen_model(output_shape=9, **kwds):
-
     flow_parameter_model = Sequential(
         [
             Input(1),
@@ -325,7 +326,6 @@ if __name__ == "__main__":
         with mlflow.start_run(
             experiment_id=exp.experiment_id, nested=mlflow.active_run() is not None
         ):
-
             mlflow.log_param("seed", args.seed)
             mlflow.log_params(
                 dict(filter(lambda kw: not isinstance(kw[1], dict), params.items()))

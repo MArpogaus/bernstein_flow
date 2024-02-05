@@ -1,4 +1,5 @@
 from functools import partial
+
 from ..distributions import BernsteinFlow
 
 
