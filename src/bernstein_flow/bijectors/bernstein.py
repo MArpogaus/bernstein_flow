@@ -28,6 +28,7 @@
 ###############################################################################
 
 # REQUIRED PYTHON MODULES #####################################################
+from functools import partial
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -40,7 +41,6 @@ from tensorflow_probability.python.internal import (
 from bernstein_flow.math.bernstein import (
     gen_bernstein_polynomial_with_linear_extension,
     gen_bernstein_polynomial_with_linear_extrapolation,
-    gen_bernstein_polynomial_with_quadratic_extrapolation,
 )
 
 
@@ -82,18 +82,17 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
             batch_shape = theta_shape[:-1]
 
             if extrapolation == "linear":
-                b_poly, self.order = gen_bernstein_polynomial_with_linear_extrapolation(
-                    self.thetas
-                )
-            elif extrapolation == "quadratic":
                 (
                     b_poly,
+                    self.extra_inv,
                     self.order,
-                ) = gen_bernstein_polynomial_with_quadratic_extrapolation(self.thetas)
+                ) = gen_bernstein_polynomial_with_linear_extrapolation(self.thetas)
             else:
-                b_poly, self.order = gen_bernstein_polynomial_with_linear_extension(
-                    self.thetas
-                )
+                (
+                    b_poly,
+                    self.extra_inv,
+                    self.order,
+                ) = gen_bernstein_polynomial_with_linear_extension(self.thetas)
 
             def b_boly_reshaped(x):
                 x = tensor_util.convert_nonref_to_tensor(x, name="x", dtype=dtype)
@@ -104,6 +103,10 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
 
                 return reshape_out(batch_shape, sample_shape, y)
 
+            domain_constraint_fn = partial(
+                tf.clip_by_value, clip_value_min=0.0, clip_value_max=1.0
+            )
+
             def root_search_fn(objective_fn, _, max_iterations=None):
                 (
                     estimated_root,
@@ -111,8 +114,9 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
                     iteration,
                 ) = tfp.math.find_root_chandrupatla(
                     objective_fn,
-                    low=tf.ones(1, dtype=dtype),
-                    # position_tolerance=1e-6,
+                    low=tf.convert_to_tensor(0, dtype=dtype),
+                    high=tf.convert_to_tensor(1, dtype=dtype),
+                    position_tolerance=1e-6,
                     # value_tolerance=1e-7,
                     max_iterations=max_iterations,
                 )
@@ -120,12 +124,20 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
 
             super().__init__(
                 fn=b_boly_reshaped,
+                domain_constraint_fn=domain_constraint_fn,
                 root_search_fn=root_search_fn,
                 max_iterations=50,
                 name=name,
                 dtype=dtype,
                 **kwds,
             )
+
+    def inverse(self, y):
+        x = super().inverse(y)
+
+        extra_inv = self.extra_inv(y)
+
+        return tf.where(tf.math.is_nan(extra_inv), x, extra_inv)
 
     def _is_increasing(self, **kwargs):
         return tf.reduce_all(self.thetas[..., 1:] >= self.thetas[..., :-1])
