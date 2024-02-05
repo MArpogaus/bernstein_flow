@@ -4,7 +4,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2022-06-01 15:21:22 (Marcel Arpogaus)
-# changed : 2023-02-07 09:37:46 (Marcel Arpogaus)
+# changed : 2024-02-05 15:11:32 (Marcel Arpogaus)
 # DESCRIPTION #################################################################
 #
 # This project is following the PEP8 style guide:
@@ -37,10 +37,7 @@ from matplotlib.patches import ConnectionPatch
 from matplotlib.text import Annotation
 from tensorflow_probability import bijectors as tfb
 
-from bernstein_flow.bijectors import (
-    BernsteinBijector,
-    BernsteinBijectorLinearExtrapolate,
-)
+from bernstein_flow.bijectors import BernsteinBijector
 
 np.random.seed(42)
 tf.random.set_seed(42)
@@ -67,7 +64,6 @@ FORMULAS = {
     BernsteinBijector: r"z_{{{curr}}} & = \frac{{1}}{{M+1}} \sum_{{i=0}}^{{M}}"
     + r"\operatorname{{Be}}_{{i}}^M(z_{{{prev}}}) \vartheta_{{i}}(\mathbf{{x}})",
 }
-FORMULAS[BernsteinBijectorLinearExtrapolate] = FORMULAS[BernsteinBijector]
 
 
 def get_fomulas(bijectors):
