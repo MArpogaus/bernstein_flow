@@ -60,7 +60,7 @@ class BernsteinBijector(tfb.AutoCompositeTensorBijector):
     def __init__(
         self,
         thetas: tf.Tensor,
-        extrapolation: str = False,
+        extrapolation: str = True,
         name: str = "bernstein_bijector",
         **kwds,
     ) -> None:
