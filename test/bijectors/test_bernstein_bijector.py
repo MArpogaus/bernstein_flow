@@ -29,10 +29,9 @@
 
 # REQUIRED PYTHON MODULES #####################################################
 import tensorflow as tf
-from tensorflow_probability.python.internal import test_util
-
 from bernstein_flow.activations import get_thetas_constrain_fn
 from bernstein_flow.bijectors import BernsteinBijector
+from tensorflow_probability.python.internal import test_util
 
 
 @test_util.test_all_tf_execution_regimes
