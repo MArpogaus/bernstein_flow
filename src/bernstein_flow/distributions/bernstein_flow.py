@@ -38,7 +38,6 @@ from tensorflow_probability.python.internal import (
     tensor_util,
 )
 
-from bernstein_flow.activations import get_thetas_constrain_fn
 from bernstein_flow.bijectors import BernsteinBijector
 
 
@@ -94,10 +93,10 @@ def apply_constraining_bijectors(
 def init_bijectors(
     thetas,
     clip_to_bernstein_domain,
-    clip_base_distribution,
     a1=None,
     b1=None,
     a2=None,
+    **bb_kwds,
 ) -> tfb.Bijector:
     """
     Builds a normalizing flow using a Bernstein polynomial as Bijector.
@@ -134,21 +133,8 @@ def init_bijectors(
             bijectors.append(tfb.Sigmoid(name="sigmoid"))
 
         # f2: ẑ = Bernstein Polynomial
-        f2 = BernsteinBijector(thetas, name="bpoly")
+        f2 = BernsteinBijector(thetas, name="bpoly", **bb_kwds)
         bijectors.append(f2)
-
-        # clip to range [min(theta), max(theta)]
-        if clip_base_distribution:
-            bijectors.append(
-                tfb.Invert(
-                    tfb.SoftClip(
-                        high=thetas[..., 0],
-                        low=thetas[..., -1],
-                        hinge_softness=0.5,
-                        name="soft_clip_base_distribution",
-                    )
-                )
-            )
 
         # f3: z = a2(x)*ẑ - b2(x)
         if tf.is_tensor(a2):
@@ -165,25 +151,23 @@ def get_base_distribution(base_distribution, dtype, **kwds):
         return base_distribution
     else:
         if base_distribution == "normal":
-            default_kwds = dict(loc=tf.convert_to_tensor(0, dtype=dtype), scale=1.0)
+            default_kwds = dict(loc=tf.cast(0, dtype=dtype), scale=1.0)
             default_kwds.update(**kwds)
             dist = tfd.Normal(**default_kwds)
         elif base_distribution == "truncated_normal":
-            default_kwds = dict(
-                loc=tf.convert_to_tensor(0, dtype=dtype), scale=1.0, low=-4, high=4
-            )
+            default_kwds = dict(loc=tf.cast(0, dtype=dtype), scale=1.0, low=-4, high=4)
             default_kwds.update(**kwds)
             dist = tfd.TruncatedNormal(**default_kwds)
         elif base_distribution == "log_normal":
-            default_kwds = dict(loc=tf.convert_to_tensor(0, dtype=dtype), scale=1.0)
+            default_kwds = dict(loc=tf.cast(0, dtype=dtype), scale=1.0)
             default_kwds.update(**kwds)
             dist = tfd.LogNormal(**default_kwds)
         elif base_distribution == "logistic":
-            default_kwds = dict(loc=tf.convert_to_tensor(0, dtype=dtype), scale=1.0)
+            default_kwds = dict(loc=tf.cast(0, dtype=dtype), scale=1.0)
             default_kwds.update(**kwds)
             dist = tfd.Logistic(**default_kwds)
         elif base_distribution == "uniform":
-            default_kwds = dict(low=tf.convert_to_tensor(0, dtype=dtype), high=1.0)
+            default_kwds = dict(low=tf.cast(0, dtype=dtype), high=1.0)
             default_kwds.update(**kwds)
             dist = tfd.Uniform(**default_kwds)
         elif base_distribution == "kumaraswamy":
@@ -207,13 +191,12 @@ class BernsteinFlow(tfd.TransformedDistribution):
         a2=None,
         base_distribution="normal",
         base_distribution_kwds={},
-        clip_to_bernstein_domain=True,
-        clip_base_distribution=False,
+        clip_to_bernstein_domain=False,
         name="BernsteinFlow",
         **bb_kwds,
     ) -> tfd.Distribution:
+        parameters = dict(locals())
         with tf.name_scope(name) as name:
-            parameters = dict(locals())
             dtype = dtype_util.common_dtype([thetas, a1, b1, a2], dtype_hint=tf.float32)
 
             thetas = tensor_util.convert_nonref_to_tensor(
@@ -237,16 +220,15 @@ class BernsteinFlow(tfd.TransformedDistribution):
                 b1=b1,
                 a2=a2,
                 clip_to_bernstein_domain=clip_to_bernstein_domain,
-                clip_base_distribution=clip_base_distribution,
+                **bb_kwds,
             )
 
             super().__init__(
                 distribution=base_distribution,
                 bijector=bijector,
                 name=name,
+                parameters=parameters,
             )
-
-            self._parameters = parameters
 
     @classmethod
     def _parameter_properties(cls, dtype=None, num_classes=None):
@@ -254,15 +236,9 @@ class BernsteinFlow(tfd.TransformedDistribution):
         # `default_constraining_bijector_fn`, `specifies_shape`, etc.; see
         # the `ParameterProperties` documentation for details.
         return dict(
-            a1=tfp.util.ParameterProperties(
-                default_constraining_bijector_fn=lambda: tfb.Softplus(
-                    low=dtype_util.eps(dtype)
-                )
-            ),
-            b1=tfp.util.ParameterProperties(),
-            thetas=tfp.util.ParameterProperties(
-                default_constraining_bijector_fn=get_thetas_constrain_fn, event_ndims=1
-            ),
+            a1=tfb.Scale.parameter_properties(dtype)["scale"],
+            b1=tfb.Shift.parameter_properties(dtype)["shift"],
+            thetas=BernsteinBijector.parameter_properties(dtype)["thetas"],
             a2=tfp.util.ParameterProperties(
                 default_constraining_bijector_fn=lambda: tfb.Softplus(
                     low=tf.cast(1.0, dtype)
@@ -274,9 +250,9 @@ class BernsteinFlow(tfd.TransformedDistribution):
     def from_pvector(
         cls,
         pvector,
-        scale_data=True,
-        shift_data=True,
-        scale_base_distribution=True,
+        scale_data,
+        shift_data,
+        scale_base_distribution,
         thetas_constrain_fn=None,
         **kwds,
     ):
