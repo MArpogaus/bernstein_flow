@@ -33,7 +33,7 @@ jobs:
         cat artifacts/old_faithful/of_pvector.txt >> report.md
 
         echo '## Flow' >> report.md
-        cat artifacts/old_faithful/of_flow.png >> report.md
+        echo '![](artifacts/old_faithful/of_flow.png)' >> report.md
 
         echo '## Results' >> report.md
         echo '![](artifacts/old_faithful/of_dist.png)' >> report.md
