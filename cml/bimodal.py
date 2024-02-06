@@ -5,7 +5,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2021-03-22 16:42:31 (Marcel Arpogaus)
-# changed : 2024-02-06 12:54:41 (Marcel Arpogaus)
+# changed : 2024-02-06 13:55:44 (Marcel Arpogaus)
 # DESCRIPTION ############################################################
 # ...
 # LICENSE ################################################################
@@ -115,7 +115,7 @@ def gen_model(output_shape=9, **kwds):
     )
 
     def bf(y_pred):
-        return BernsteinFlow.from_pvector(y_pred, **kwds)
+        return BernsteinFlow.new(y_pred, **kwds)
 
     def my_loss_fn(y_true, y_pred):
         dist = bf(y_pred)

@@ -4,4 +4,4 @@ from ..distributions import BernsteinFlow
 
 
 def gen_flow(**kwds):
-    return partial(BernsteinFlow.from_pvector, **kwds)
+    return partial(BernsteinFlow.new, **kwds)

@@ -41,11 +41,11 @@ from tensorflow_probability.python.internal import (
 from bernstein_flow.bijectors import BernsteinBijector
 
 
-def slice_parameter_vector(pvector: tf.Tensor, p_spec: dict) -> dict:
+def slice_parameter_vector(params: tf.Tensor, p_spec: dict) -> dict:
     """slices parameters of the given size form a tensor.
 
-    :param pvector: The parameter vector.
-    :type pvector: tf.Tensor
+    :param params: The parameter vector.
+    :type params: tf.Tensor
     :param p_spec: specification of parameter sizes in the form {'parameter_name': size}
     :type p_spec: dict
     :returns: Dictionary containing the sliced parameters
@@ -57,7 +57,7 @@ def slice_parameter_vector(pvector: tf.Tensor, p_spec: dict) -> dict:
         offset = 0
         for name, length in p_spec.items():
             # fmt: off
-            p = pvector[..., offset:(offset + length)]
+            p = params[..., offset:(offset + length)]
             # fmt: on
             offset += length
             parameters[name] = tf.squeeze(p, name=name)
@@ -192,11 +192,11 @@ class BernsteinFlow(tfd.TransformedDistribution):
         base_distribution="normal",
         base_distribution_kwds={},
         clip_to_bernstein_domain=False,
-        name="BernsteinFlow",
+        name=None,
         **bb_kwds,
     ) -> tfd.Distribution:
         parameters = dict(locals())
-        with tf.name_scope(name) as name:
+        with tf.name_scope(name or "BernsteinFlow") as name:
             dtype = dtype_util.common_dtype([thetas, a1, b1, a2], dtype_hint=tf.float32)
 
             thetas = tensor_util.convert_nonref_to_tensor(
@@ -232,9 +232,6 @@ class BernsteinFlow(tfd.TransformedDistribution):
 
     @classmethod
     def _parameter_properties(cls, dtype=None, num_classes=None):
-        # Annotations may optionally specify properties, such as `event_ndims`,
-        # `default_constraining_bijector_fn`, `specifies_shape`, etc.; see
-        # the `ParameterProperties` documentation for details.
         return dict(
             a1=tfb.Scale.parameter_properties(dtype)["scale"],
             b1=tfb.Shift.parameter_properties(dtype)["shift"],
@@ -246,24 +243,25 @@ class BernsteinFlow(tfd.TransformedDistribution):
             ),
         )
 
-    @classmethod
-    def from_pvector(
-        cls,
-        pvector,
+    @staticmethod
+    def new(
+        params,
         scale_data,
         shift_data,
         scale_base_distribution,
         thetas_constrain_fn=None,
+        name=None,
         **kwds,
     ):
-        with tf.name_scope("from_pvector"):
-            dtype = dtype_util.common_dtype([pvector], dtype_hint=tf.float32)
+        """Create the distribution instance from a `params` vector."""
+        with tf.name_scope(name or "BernsteinFlow"):
+            dtype = dtype_util.common_dtype([params], dtype_hint=tf.float32)
 
-            pvector = tensor_util.convert_nonref_to_tensor(
-                pvector, dtype=dtype, name="pvector"
+            params = tensor_util.convert_nonref_to_tensor(
+                params, dtype=dtype, name="pvector"
             )
 
-            shape = prefer_static.shape(pvector)
+            shape = prefer_static.shape(params)
 
             p_spec = {}
 
@@ -282,10 +280,11 @@ class BernsteinFlow(tfd.TransformedDistribution):
                 bernstein_order -= 1
 
             p_spec["thetas"] = bernstein_order
-            return cls(
+            return BernsteinFlow(
                 **apply_constraining_bijectors(
-                    unconstrained_parameters=slice_parameter_vector(pvector, p_spec),
+                    unconstrained_parameters=slice_parameter_vector(params, p_spec),
                     thetas_constrain_fn=thetas_constrain_fn,
                 ),
+                name=name,
                 **kwds,
             )

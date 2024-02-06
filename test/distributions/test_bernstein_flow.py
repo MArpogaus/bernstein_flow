@@ -49,7 +49,7 @@ def gen_dist(batch_shape, order=5, dtype=tf.float32, seed=1, **kwds):
         loc=tf.zeros(batch_shape, dtype=dtype),
         scale=tf.ones(batch_shape, dtype=dtype),
     )
-    bs = BernsteinFlow.from_pvector(pvs, **kwds)
+    bs = BernsteinFlow.new(pvs, **kwds)
     return n, bs
 
 
@@ -250,7 +250,7 @@ for dtype in [tf.float32, tf.float64]:
     @pytest.mark.skip
     def test_small_numbers(self):
         o = 100
-        bf = BernsteinFlow.from_pvector(
+        bf = BernsteinFlow.new(
             [1, 1] + 5 * [-1000] + (o - 4) * [1] + 5 * [-1000] + [1, 1, 1],
             scale_data=True,
             shift_data=True,

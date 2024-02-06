@@ -64,7 +64,7 @@ class BernsteinFlowLoss(Loss):
         :returns:   negative logarithmic likelihood
         :rtype:     Tensor
         """
-        flow = BernsteinFlow.from_pvector(pvector)
+        flow = BernsteinFlow.new(pvector)
 
         nll = -flow.log_prob(y)
 
