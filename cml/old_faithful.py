@@ -5,7 +5,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2021-03-22 11:14:00 (Marcel Arpogaus)
-# changed : 2024-02-06 14:42:02 (Marcel Arpogaus)
+# changed : 2024-02-06 14:58:19 (Marcel Arpogaus)
 # DESCRIPTION ############################################################
 # ...
 # LICENSE ################################################################
@@ -122,10 +122,7 @@ flow_model.add(Dense(3 + bernstein_order))
 
 flow_model.compile(optimizer=tf.optimizers.Adam(learning_rate=0.01), loss=negloglik)
 
-hist = flow_model.fit(
-    dataset,
-    epochs=1000,
-)
+hist = flow_model.fit(dataset, epochs=1000, shuffle=True)
 
 
 # %% Result

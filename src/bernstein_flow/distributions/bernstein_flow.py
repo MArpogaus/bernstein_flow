@@ -233,7 +233,11 @@ class BernsteinFlow(tfd.TransformedDistribution):
     @classmethod
     def _parameter_properties(cls, dtype=None, num_classes=None):
         return dict(
-            a1=tfb.Scale.parameter_properties(dtype)["scale"],
+            a1=tfp.util.ParameterProperties(
+                default_constraining_bijector_fn=lambda: tfb.Softplus(
+                    low=dtype_util.eps(dtype)
+                )
+            ),
             b1=tfb.Shift.parameter_properties(dtype)["shift"],
             thetas=BernsteinBijector.parameter_properties(dtype)["thetas"],
             a2=tfp.util.ParameterProperties(

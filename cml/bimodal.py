@@ -5,7 +5,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2021-03-22 16:42:31 (Marcel Arpogaus)
-# changed : 2024-02-06 13:55:44 (Marcel Arpogaus)
+# changed : 2024-02-06 15:02:27 (Marcel Arpogaus)
 # DESCRIPTION ############################################################
 # ...
 # LICENSE ################################################################
@@ -155,7 +155,7 @@ def fit_model(
         train_y,
         validation_data=(val_x, val_y),
         epochs=epochs,
-        # shuffle=True,
+        shuffle=True,
         batch_size=batch_size,
         callbacks=callbacks,
         **kwds,

@@ -2,7 +2,6 @@ bimodal:
   fit_kwds:
     batch_size: 32
     epochs: 1000
-    # steps_per_epoch: 2
   model_kwds:
     output_shape: 20
     thetas_constrain_fn: !!python/object/apply:bernstein_flow.activations.get_thetas_constrain_fn
