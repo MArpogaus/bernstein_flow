@@ -4,7 +4,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2022-03-09 08:45:52 (Marcel Arpogaus)
-# changed : 2024-02-05 16:33:00 (Marcel Arpogaus)
+# changed : 2024-02-06 10:19:05 (Marcel Arpogaus)
 # DESCRIPTION #################################################################
 # ...
 # LICENSE #####################################################################
@@ -14,7 +14,7 @@
 import numpy as np
 import tensorflow as tf
 from tensorflow_probability import distributions as tfd
-from tensorflow_probability.python.internal import prefer_static
+from tensorflow_probability.python.internal import dtype_util, prefer_static
 
 
 def gen_basis(order, dtype=tf.float32):
@@ -53,93 +53,126 @@ def derive_bpoly(thetas):
     return b_poly_dash, order
 
 
-def get_end_points(thetas):
-    return thetas[..., 0], thetas[..., -1]
+def get_bounds(thetas):
+    eps = dtype_util.eps(thetas.dtype)
+    x = tf.cast([eps, 1 - eps], dtype=thetas.dtype)
+
+    # adds singleton dimensions for batch shape
+    batch_shape = prefer_static.shape(thetas)[:-1]
+    batch_rank = prefer_static.rank(batch_shape)
+
+    shape = [...] + [tf.newaxis for _ in range(batch_rank + 1)]
+    x = x[shape]
+
+    return x
+
+
+def evaluate_bpoly_on_bounds(thetas, bounds):
+    b_poly, _ = gen_bernstein_polynomial(thetas)
+
+    return b_poly(bounds)
 
 
 def gen_linear_extension(thetas):
     # y = x + b
     # y' = a
 
-    # [Be(0),Be(1)]
-    end_values = get_end_points(thetas)
+    # [eps, 1 - eps]
+    bounds = get_bounds(thetas)
 
-    # b = y - a = Be - a
-    b = tf.stack(end_values)
+    # [Be(eps), Be(1 - eps)]
+    b = evaluate_bpoly_on_bounds(thetas, bounds)
 
     def extra(x):
         e0 = x + b[0]
         e1 = x + b[1] - 1
 
-        y = tf.where(x <= 0, e0, np.nan)
-        y = tf.where(x >= 1, e1, y)
+        y = tf.where(x <= bounds[0], e0, np.nan)
+        y = tf.where(x >= bounds[1], e1, y)
 
         return y
+
+    def extra_log_det_jacobian(x):
+        y = tf.where(x <= bounds[0], tf.ones_like(x), np.nan)
+        y = tf.where(x >= bounds[1], tf.ones_like(x), y)
+
+        return tf.math.log(tf.abs(y))
 
     def extra_inv(y):
         x0 = y - b[0]
         x1 = y - b[1] + 1
 
-        x = tf.where(x0 <= 0, x0, np.nan)
-        x = tf.where(x1 >= 1, x1, x)
+        x = tf.where(x0 <= bounds[0], x0, np.nan)
+        x = tf.where(x1 >= bounds[1], x1, x)
 
         return x
 
-    return extra, extra_inv
+    return extra, extra_log_det_jacobian, extra_inv, bounds
 
 
 def gen_linear_extrapolation(thetas):
     # y = a * x + b
     # y' = a
 
-    # [Be(0),Be(1)]
-    end_values = get_end_points(thetas)
+    # [eps, 1 - eps]
+    bounds = get_bounds(thetas)
 
-    # [Be'(0),Be'(1)]
+    # [Be(eps), Be(1 - eps)]
+    b = evaluate_bpoly_on_bounds(thetas, bounds)
+
+    # [Be'(eps), Be'(1 - eps)]
     dtheta = derive_thetas(thetas)
-    first_derivative_end_values = get_end_points(dtheta)
-
-    # a = b' = Be'
-    a = tf.stack(first_derivative_end_values)
-
-    # b = y - a = Be - a
-    b = tf.stack(end_values) - a
+    a = evaluate_bpoly_on_bounds(dtheta, bounds)
 
     def extra(x):
-        e0 = a[0] * (x + 1) + b[0]
-        e1 = a[1] * x + b[1]
+        e0 = a[0] * x + b[0]
+        e1 = a[1] * (x - 1) + b[1]
 
-        y = tf.where(x <= 0, e0, np.nan)
-        y = tf.where(x >= 1, e1, y)
+        y = tf.where(x <= bounds[0], e0, np.nan)
+        y = tf.where(x >= bounds[1], e1, y)
 
         return y
 
+    def extra_log_det_jacobian(x):
+        y = tf.where(x <= bounds[0], a[0], np.nan)
+        y = tf.where(x >= bounds[1], a[1], y)
+
+        return tf.math.log(tf.abs(y))
+
     def extra_inv(y):
-        x = np.nan * tf.ones_like(y)
+        x0 = (y - b[0]) / a[0]
+        x1 = (y - b[1]) / a[1] + 1
 
-        x0 = (y - b[0]) / a[0] - 1
-        x1 = (y - b[1]) / a[1]
-
-        x = tf.where(x0 <= 0, x0, np.nan)
-        x = tf.where(x1 >= 1, x1, x)
+        x = tf.where(x0 <= bounds[0], x0, np.nan)
+        x = tf.where(x1 >= bounds[1], x1, x)
 
         return x
 
-    return extra, extra_inv
+    return extra, extra_log_det_jacobian, extra_inv, bounds
 
 
 def gen_bernstein_polynomial_with_extrapolation(
     theta, gen_extrapolation_fn=gen_linear_extrapolation
 ):
     bpoly, order = gen_bernstein_polynomial(theta)
-    extra, extra_inv = gen_extrapolation_fn(theta)
+    dbpoly, _ = derive_bpoly(theta)
+    extra, extra_log_det_jacobian, extra_inv, bounds = gen_extrapolation_fn(theta)
 
+    @tf.function
     def bpoly_extra(x):
-        y = bpoly(tf.where((x <= 0) | (x >= 1), 0.5, x))
-        y = tf.where((x <= 0) | (x >= 1), extra(x), y)
+        x_safe = (x <= bounds[0]) | (x >= bounds[1])
+        y = bpoly(tf.where(x_safe, tf.cast(0.5, theta.dtype), x))
+        y = tf.where(x_safe, extra(x), y)
         return y
 
-    return bpoly_extra, extra_inv, order
+    @tf.function
+    def bpoly_log_det_jacobian_extra(x):
+        x_safe = (x <= bounds[0]) | (x >= bounds[1])
+        y = tf.math.log(tf.abs(dbpoly(tf.where(x_safe, tf.cast(0.5, theta.dtype), x))))
+        y = tf.where(x_safe, extra_log_det_jacobian(x), y)
+        return y
+
+    return bpoly_extra, bpoly_log_det_jacobian_extra, extra_inv, order
 
 
 def gen_bernstein_polynomial_with_linear_extension(thetas):

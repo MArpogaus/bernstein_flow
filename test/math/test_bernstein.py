@@ -1,7 +1,5 @@
 import numpy as np
-
-from bernstein_flow.math.bernstein import (derive_bpoly,
-                                           gen_bernstein_polynomial)
+from bernstein_flow.math.bernstein import derive_bpoly, gen_bernstein_polynomial
 
 np.random.seed(1)
 
