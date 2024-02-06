@@ -1,7 +1,10 @@
 bimodal:
   fit_kwds:
+    batch_size: 32
+    epochs: 1000
+    # steps_per_epoch: 2
+  model_kwds:
     output_shape: 20
-    bb_class: !!python/name:bernstein_flow.bijectors.bernstein_extra.BernsteinBijectorLinearExtrapolate
     thetas_constrain_fn: !!python/object/apply:bernstein_flow.activations.get_thetas_constrain_fn
       kwds:
         low: -3
@@ -14,5 +17,5 @@ bimodal:
     scale_base_distribution: false
     scale_data: true
     shift_data: true
-    batch_size: 128
+    extrapolation: true
   scale_data_to_domain: false

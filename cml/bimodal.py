@@ -5,12 +5,13 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2021-03-22 16:42:31 (Marcel Arpogaus)
-# changed : 2022-08-31 17:27:02 (Marcel Arpogaus)
+# changed : 2024-02-06 12:54:41 (Marcel Arpogaus)
 # DESCRIPTION ############################################################
 # ...
 # LICENSE ################################################################
 # ...
 ##########################################################################
+# %% Imports
 import argparse
 import os
 from functools import partial
@@ -21,11 +22,6 @@ import pandas as pd
 import tensorflow as tf
 import tensorflow_probability as tfp
 import yaml
-from tensorflow.keras.layers import Dense, Input
-from tensorflow.keras.models import Sequential
-from tensorflow_probability import bijectors as tfb
-from tensorflow_probability import distributions as tfd
-
 from bernstein_flow.distributions import BernsteinFlow
 from bernstein_flow.util.visualization import (
     plot_chained_bijectors,
@@ -33,6 +29,9 @@ from bernstein_flow.util.visualization import (
     plot_value_and_gradient,
     plot_x_trafo,
 )
+from tensorflow.keras.layers import Dense, Input
+from tensorflow.keras.models import Sequential
+from tensorflow_probability import bijectors as tfb
 
 try:
     import mlflow
@@ -41,7 +40,12 @@ try:
 except ImportError:
     USE_MLFLOW = False
 
+# %% globals
+metrics_path = "metrics/bimodal"
+artifacts_path = "artifacts/bimodal"
 
+
+# %% functions
 def print_param(b, indent=0, prefix=""):
     s = " " * indent + prefix
     if not isinstance(b, tfb.Bijector):
@@ -114,18 +118,29 @@ def gen_model(output_shape=9, **kwds):
         return BernsteinFlow.from_pvector(y_pred, **kwds)
 
     def my_loss_fn(y_true, y_pred):
-        return -tfd.Independent(bf(y_pred)).log_prob(tf.squeeze(y_true))
+        dist = bf(y_pred)
+        return -dist.log_prob(tf.squeeze(y_true))
 
     flow_parameter_model.compile(
-        optimizer="adam",
-        loss=my_loss_fn
-        # run_eagerly=True
+        optimizer=tf.optimizers.Adam(0.001),
+        loss=my_loss_fn,
+        # run_eagerly=True,
     )
     return flow_parameter_model, bf
 
 
-def fit_model(train_x, train_y, val_x, val_y, batch_size=32, epochs=1000, **kwds):
-    lr_patience = 15
+def fit_model(
+    model,
+    bf,
+    train_x,
+    train_y,
+    val_x,
+    val_y,
+    batch_size,
+    epochs,
+    lr_patience=15,
+    **kwds,
+):
     callbacks = [
         tf.keras.callbacks.ReduceLROnPlateau(
             monitor="val_loss", factor=0.1, patience=lr_patience
@@ -135,17 +150,17 @@ def fit_model(train_x, train_y, val_x, val_y, batch_size=32, epochs=1000, **kwds
         ),
         tf.keras.callbacks.TerminateOnNaN(),
     ] + kwds.pop("callbacks", [])
-    model, bf = gen_model(**kwds)
     hist = model.fit(
         train_x,
         train_y,
         validation_data=(val_x, val_y),
         epochs=epochs,
-        shuffle=True,
+        # shuffle=True,
         batch_size=batch_size,
         callbacks=callbacks,
+        **kwds,
     )
-    return model, bf, hist
+    return hist
 
 
 def plot_dists(model, bf, test_x, test_t, test_y):
@@ -173,7 +188,6 @@ def prepare_data(n=100, scale_data_to_domain=False):
     # Data
     train_x, train_y = gen_train_data(n=n)
     val_x, val_y = gen_train_data(n=n // 10)
-    train_x.shape, train_y.shape, val_x.shape, val_y.shape
     test_x, test_y = gen_test_data(5, 200)
 
     if scale_data_to_domain:
@@ -202,7 +216,7 @@ def results(
     fig = plt.figure(figsize=(16, 8))
     plt.scatter(train_x, train_y, alpha=0.5, label="train")
     plt.scatter(test_t, test_y, alpha=0.5, label="test")
-    plt.scatter(val_x, val_y, alpha=0.5, label="test")
+    plt.scatter(val_x, val_y, alpha=0.5, label="validate")
 
     plt.legend()
     fig.savefig(os.path.join(artifacts_path, "bm_data.png"))
@@ -259,8 +273,11 @@ def run(seed, params, metrics_path, artifacts_path):
     )
     test_x = np.unique(test_t)
 
+    # Build Model
+    model, bf = gen_model(**params["model_kwds"])
+
     # Fit Model
-    model, bf, hist = fit_model(train_x, train_y, val_x, val_y, **params["fit_kwds"])
+    hist = fit_model(model, bf, train_x, train_y, val_x, val_y, **params["fit_kwds"])
 
     if not (
         np.isnan(hist.history["loss"]).any() or np.isnan(hist.history["val_loss"]).any()
@@ -284,6 +301,7 @@ def run(seed, params, metrics_path, artifacts_path):
     return model, bf, hist
 
 
+# %% ifmain
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -298,14 +316,12 @@ if __name__ == "__main__":
     parser.add_argument("--seed", help="random seed", default=1, type=int)
 
     args = parser.parse_args()
-    params = yaml.load(open("cml/params.yaml"), Loader=yaml.Loader)["bimodal"]
+    with open("cml/params.yaml") as params_file:
+        params = yaml.load(params_file, Loader=yaml.Loader)["bimodal"]
 
     # Ensure Reproducibility
     print("TFP Version", tfp.__version__)
     print("TF  Version", tf.__version__)
-
-    metrics_path = "metrics/bimodal"
-    artifacts_path = "artifacts/bimodal"
 
     if not os.path.exists(metrics_path):
         os.makedirs(metrics_path)

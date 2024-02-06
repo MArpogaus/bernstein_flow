@@ -5,7 +5,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2021-05-10 17:59:17 (Marcel Arpogaus)
-# changed : 2021-05-11 16:38:43 (Marcel Arpogaus)
+# changed : 2024-02-05 17:31:37 (Marcel Arpogaus)
 # DESCRIPTION #################################################################
 # ...
 # LICENSE #####################################################################
@@ -21,13 +21,9 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 import tensorflow_probability as tfp
+from bernstein_flow.activations import get_thetas_constrain_fn
 from bimodal import run
 from hyperopt import STATUS_FAIL, STATUS_OK, Trials, fmin, hp, tpe
-
-from bernstein_flow.bijectors import (
-    BernsteinBijector,
-    BernsteinBijectorLinearExtrapolate,
-)
 
 if __name__ == "__main__":
     experiment_name = "hp_bimodal"
@@ -60,35 +56,33 @@ if __name__ == "__main__":
     if not os.path.exists(artifacts_path):
         os.makedirs(artifacts_path)
 
-    common_fit_kwds = {
-        "output_shape": 20,
+    common_model_kwds = {
         "scale_data": hp.choice("scale_data", [True, False]),
         "shift_data": hp.choice("shift_data", [True, False]),
-        "scale_base_distribution": hp.choice("scale_base_distribution", [True, False]),
-        "clip_base_distribution": hp.choice("clip_base_distribution", [True, False]),
-        "allow_values_outside_support": hp.choice(
-            "allow_values_outside_support", [True, False]
-        ),
-    }
-    space = {
-        "scale_data_to_domain": hp.choice("scale_data_to_domain", [True, False]),
-        "fit_kwds": hp.choice(
-            "bijector_class",
-            [
-                dict(bb_class=BernsteinBijector, **common_fit_kwds),
-                dict(
-                    bb_class=BernsteinBijectorLinearExtrapolate,
-                    clip_to_bernstein_domain=hp.choice(
-                        "clip_to_bernstein_domain", [True, False]
-                    ),
-                    **common_fit_kwds,
-                ),
-            ],
+        "thetas_constrain_fn": get_thetas_constrain_fn(
+            low=-4, high=4, smooth_bounds=False, allow_flexible_bounds=False
         ),
     }
 
+    space = {
+        # hp.choice("scale_data_to_domain", [True, False]),
+        "scale_data_to_domain": False,
+        "model_kwds": dict(
+            clip_to_bernstein_domain=hp.choice(
+                "clip_to_bernstein_domain", [True, False]
+            ),
+            scale_base_distribution=hp.choice("scale_base_distribution", [True, False]),
+            **common_model_kwds,
+        ),
+        "fit_kwds": {
+            "batch_size": hp.choice("batch_size", [16, 32, 128, 512]),
+            "epochs": 1000,
+            "verbose": 0,
+        },
+    }
+
     mlflow.autolog()
-    experiment_id = mlflow.set_experiment(experiment_name)
+    exp = mlflow.set_experiment(experiment_name)
     if os.environ.get("MLFLOW_RUN_ID", False):
         mlflow.start_run()
     else:
@@ -100,20 +94,21 @@ if __name__ == "__main__":
             params["data_points"] = 25
 
         mlflow.start_run(
-            experiment_id=experiment_id, nested=mlflow.active_run() is not None
+            experiment_id=exp.experiment_id, nested=mlflow.active_run() is not None
         )
         mlflow.log_param("seed", args.seed)
         mlflow.log_params(
             dict(filter(lambda kw: not isinstance(kw[1], dict), params.items()))
         )
         mlflow.log_params(params["fit_kwds"])
+        mlflow.log_params(params["model_kwds"])
         model, bf, hist = run(args.seed, params, metrics_path, artifacts_path)
         mlflow.log_artifacts(artifacts_path)
 
         loss = min(hist.history["val_loss"])
         flow = bf(model(tf.linspace(0.0, 1.0, 10)[..., None]))
         status = STATUS_OK
-        if np.isnan(loss).any() or np.isnan(flow.mean().numpy()).any():
+        if np.isnan(loss).any() or np.isnan(flow.sample(100)).any():
             status = STATUS_FAIL
         mlflow.end_run("FINISHED" if status == STATUS_OK else "FAILED")
         return {"loss": loss, "status": status}
@@ -125,7 +120,7 @@ if __name__ == "__main__":
         algo=tpe.suggest,
         max_evals=2 if args._10sec else 50,
         trials=trials,
-        rstate=np.random.RandomState(args.seed),
+        rstate=np.random.default_rng(args.seed),
     )
     mlflow.log_params(best)
     mlflow.log_metric("best_score", min(trials.losses()))
