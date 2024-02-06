@@ -10,8 +10,8 @@ classifiers = [
   "Programming Language :: Python :: 3.10"
 ]
 dependencies = [
-  "tensorflow>=2.5, <2.10",
-  "tensorflow_probability>=0.13, <0.17",
+  "tensorflow>=2.5",
+  "tensorflow_probability>=0.13",
   "matplotlib"
 ]
 dynamic = ["version"]
@@ -23,15 +23,11 @@ requires-python = ">=3.7, <3.11"
 [project.optional-dependencies]
 develop = [
   'bernstein_flow[examples,test]',
-  'autoflake',
-  'black[jupyter]',
-  'isort',
-  'jupyterlab-lsp',
-  'pre-commit',
-  'python-lsp-black',
-  'python-lsp-server[all]',
   'ipykernel',
-  'tox'
+  'pre-commit',
+  'python-lsp-ruff',
+  'python-lsp-server[all]',
+  'ruff'
 ]
 examples = [
   'bernstein_flow[train]',
@@ -49,18 +45,30 @@ train = [
   'PyYAML~=6.0'
 ]
 
-[tool.autoflake]
-expand-star-imports = true
-ignore-init-module-imports = true
-remove-all-unused-imports = true
-remove-unused-variables = true
+[tool.ruff]
+indent-width = 4
+# Same as Black.
+line-length = 88
+# Assume Python 3.8
+target-version = "py38"
 
-[tool.black]
-# line-length = 88
-target-version = ['py38']
+[tool.ruff.format]
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
+# Like Black, use double quotes for strings.
+quote-style = "double"
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
 
-[tool.isort]
-profile = "black"
+[tool.ruff.lint]
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+ignore = []
+# Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
+select = ["I", "E", "F"]
+unfixable = []
 
 [tool.setuptools.dynamic]
 version = {attr = "bernstein_flow.__version__"}
