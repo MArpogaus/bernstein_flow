@@ -12,6 +12,8 @@ jobs:
       with:
         node-version: '16'
     - uses: iterative/setup-cml@v1
+    - name: Install TeXlive
+      run: sudo apt-get update && sudo apt-get install texlive texlive-science texlive-latex-extra cm-super dvipng
     - name: cml
       env:
         REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
