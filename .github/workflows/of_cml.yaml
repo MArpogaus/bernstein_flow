@@ -22,14 +22,17 @@ jobs:
         echo '# Old Faithful' >> report.md
 
         echo '## Learning Curve' >> report.md
-        echo '![](metrics/old_faithful/of_hist.png)' >> report.md
+        echo '![](artifacts/old_faithful/of_hist.png)' >> report.md
 
         echo '## Metrics' >> report.md
         cat metrics/old_faithful/of_metrics.txt >> report.md
 
         echo '## Parameter Vector' >> report.md
-        cat metrics/old_faithful/of_pvector.txt >> report.md
+        cat artifacts/old_faithful/of_pvector.txt >> report.md
+
+        echo '## Flow' >> report.md
+        cat artifacts/old_faithful/of_flow.png >> report.md
 
         echo '## Results' >> report.md
-        echo '![](metrics/old_faithful/of_dist.png)' >> report.md
+        echo '![](artifacts/old_faithful/of_dist.png)' >> report.md
         cml comment create report.md

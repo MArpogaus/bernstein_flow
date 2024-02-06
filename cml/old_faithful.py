@@ -5,13 +5,13 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2021-03-22 11:14:00 (Marcel Arpogaus)
-# changed : 2023-02-07 08:31:36 (Marcel Arpogaus)
+# changed : 2024-02-06 14:42:02 (Marcel Arpogaus)
 # DESCRIPTION ############################################################
 # ...
 # LICENSE ################################################################
 # ...
 ##########################################################################
-
+# %% Imports
 import os
 
 import matplotlib.pyplot as plt
@@ -19,33 +19,43 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 import tensorflow_probability as tfp
+from bernstein_flow.distributions import BernsteinFlow
+from bernstein_flow.util.visualization import plot_flow
 from tensorflow.keras.layers import Dense, InputLayer
 
-from bernstein_flow.distributions import BernsteinFlow
-
-# Ensure Reproducibility
+# %% Ensure Reproducibility
 np.random.seed(2)
 tf.random.set_seed(2)
 print("TFP Version", tfp.__version__)
 print("TF  Version", tf.__version__)
 
 
-# Function Definitions
-def negloglik(y_true, y_hat):
-    nll = -y_hat.log_prob(y_true)
+# %% Function Definitions
+def bnf(pv):
+    return BernsteinFlow.new(
+        pv,
+        scale_data=True,
+        shift_data=True,
+        scale_base_distribution=False,
+        extrapolation=True,
+    )
+
+
+def negloglik(y_true, pv):
+    nll = -bnf(pv).log_prob(y_true)
     return nll
 
 
-# Data extracted from
+# %% Data extracted from
 # https://stat.ethz.ch/R-manual/R-devel/library/datasets/html/faithful.html.
 #
 # Reference:  A. Azzalini and A. W. Bowman, “A Look at Some Data on the
 # Old Faithful Geyser,” Journal of the Royal Statistical Society. Series C
 # (Applied Statistics), vol. 39, no. 3, pp. 357–365, 1990, doi:
 # 10.2307/2347385.
+# fmt: off
 y = np.asarray(
     (
-        # fmt: off
         0.6694, 0.3583, 0.6667, 0.6667, 0.6667, 0.3333, 0.7306, 0.7139, 0.3389,
         0.8056, 0.3056, 0.9083, 0.2694, 0.8111, 0.7306, 0.2944, 0.7778, 0.3333,
         0.7889, 0.7028, 0.3167, 0.8278, 0.3333, 0.6667, 0.3333, 0.6667, 0.4722,
@@ -80,16 +90,16 @@ y = np.asarray(
         0.6667, 0.6667, 0.6667, 0.3333, 0.6667, 0.3222, 0.7222, 0.2778, 0.7944,
         0.325, 0.7806, 0.3222, 0.7361, 0.3556, 0.6806, 0.3444, 0.6667, 0.6667,
         0.3333,
-        # fmt on
     ),
     np.float32,
 )
+# fmt: on
 
 
 x = np.ones((y.shape[0], 1))  # We us ones to mimic unconditional data
 
 
-# TensorFlow Dataset API
+# %% TensorFlow Dataset API
 
 
 dataset = tf.data.Dataset.from_tensor_slices((x, y))
@@ -99,7 +109,7 @@ dataset = dataset.prefetch(1)
 dataset
 
 
-# Fitting the Normalizing Flow to the data
+# %% Fitting the Normalizing Flow to the data
 
 
 bernstein_order = 9
@@ -109,10 +119,6 @@ flow_model = tf.keras.Sequential()
 flow_model.add(InputLayer(input_shape=(1)))
 # Here could come a gigantus network
 flow_model.add(Dense(3 + bernstein_order))
-flow_model.add(
-    tfp.layers.DistributionLambda(lambda pv: BernsteinFlow.from_pvector(pv))
-)  # <--- Replace the Normal distribution with the Transformed Distribution
-
 
 flow_model.compile(optimizer=tf.optimizers.Adam(learning_rate=0.01), loss=negloglik)
 
@@ -122,18 +128,26 @@ hist = flow_model.fit(
 )
 
 
-# Result
-result_path = "metrics/old_faithful/"
+# %% Result
+metrcis_path = "metrics/old_faithful/"
+artifacts_path = "artifacts/old_faithful/"
 
-if not os.path.exists(result_path):
-    os.makedirs(result_path)
+os.makedirs(metrcis_path, exist_ok=True)
+os.makedirs(artifacts_path, exist_ok=True)
 
 hist_df = pd.DataFrame(hist.history)
-hist_df.to_csv(result_path + "of_hist.csv")
-fig = hist_df.loss.plot(figsize=(16, 8)).get_figure()
-fig.savefig(result_path + "of_hist.png")
+hist_df.to_csv(artifacts_path + "of_hist.csv")
 
-flow = flow_model(np.ones((1, 1), dtype="float32"))
+with open(metrcis_path + "of_metrics.txt", "w") as metrics:
+    metrics.write("Min of loss: " + str(hist_df.loss.min()) + "\n")
+
+fig = hist_df.loss.plot(figsize=(16, 8)).get_figure()
+fig.savefig(artifacts_path + "of_hist.png")
+
+flow = bnf(flow_model(np.ones((1, 1), dtype="float32")))
+
+fig = plot_flow(flow)
+fig.savefig(artifacts_path + "of_flow.png")
 
 times = np.linspace(0, 1.2)
 fp = flow.prob(times)
@@ -141,24 +155,19 @@ fp = flow.prob(times)
 fig = plt.figure(figsize=(16, 16))
 plt.hist(y, 20, density=True)
 plt.plot(times, fp)
-fig.savefig(result_path + "of_dist.png")
+fig.savefig(artifacts_path + "of_dist.png")
 
 
-with open(result_path + "of_metrics.txt", "w") as metrics:
-    metrics.write("Min of loss: " + str(hist_df.loss.min()) + "\n")
-
-a2 = flow.bijector.bijector.bijectors[0].scale
-thetas = flow.bijector.bijector.bijectors[1].thetas
-a1 = flow.bijector.bijector.bijectors[3].scale
-b1 = flow.bijector.bijector.bijectors[4].shift
+thetas = flow.bijector.bijector.bijectors[0].thetas
+a1 = flow.bijector.bijector.bijectors[1].scale
+b1 = flow.bijector.bijector.bijectors[2].shift
 
 
-with open(result_path + "of_pvector.txt", "w") as pvector:
+with open(artifacts_path + "of_pvector.txt", "w") as pvector:
     pvector.write(
         f"""
     a1 = {repr(a1.numpy().flatten())}
     b1 = {repr(b1.numpy().flatten())}
     thetas = {repr(thetas.numpy().flatten())}
-    a2 = {repr(a2.numpy().flatten())}
 """
     )
