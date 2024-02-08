@@ -4,7 +4,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2022-03-09 08:45:52 (Marcel Arpogaus)
-# changed : 2024-02-06 10:19:05 (Marcel Arpogaus)
+# changed : 2024-02-08 13:29:50 (Marcel Arpogaus)
 # DESCRIPTION #################################################################
 # ...
 # LICENSE #####################################################################
@@ -78,36 +78,36 @@ def gen_linear_extension(thetas):
     # y' = a
 
     # [eps, 1 - eps]
-    bounds = get_bounds(thetas)
+    x_bounds = get_bounds(thetas)
 
     # [Be(eps), Be(1 - eps)]
-    b = evaluate_bpoly_on_bounds(thetas, bounds)
+    y_bounds = evaluate_bpoly_on_bounds(thetas, x_bounds)
 
     def extra(x):
-        e0 = x + b[0]
-        e1 = x + b[1] - 1
+        e0 = x + y_bounds[0]
+        e1 = x + y_bounds[1] - 1
 
-        y = tf.where(x <= bounds[0], e0, np.nan)
-        y = tf.where(x >= bounds[1], e1, y)
+        y = tf.where(x <= x_bounds[0], e0, np.nan)
+        y = tf.where(x >= x_bounds[1], e1, y)
 
         return y
 
     def extra_log_det_jacobian(x):
-        y = tf.where(x <= bounds[0], tf.ones_like(x), np.nan)
-        y = tf.where(x >= bounds[1], tf.ones_like(x), y)
+        y = tf.where(x <= x_bounds[0], tf.ones_like(x), np.nan)
+        y = tf.where(x >= x_bounds[1], tf.ones_like(x), y)
 
         return tf.math.log(tf.abs(y))
 
     def extra_inv(y):
-        x0 = y - b[0]
-        x1 = y - b[1] + 1
+        x0 = y - y_bounds[0]
+        x1 = y - y_bounds[1] + 1
 
-        x = tf.where(x0 <= bounds[0], x0, np.nan)
-        x = tf.where(x1 >= bounds[1], x1, x)
+        x = tf.where(x0 <= x_bounds[0], x0, np.nan)
+        x = tf.where(x1 >= x_bounds[1], x1, x)
 
         return x
 
-    return extra, extra_log_det_jacobian, extra_inv, bounds
+    return extra, extra_log_det_jacobian, extra_inv, x_bounds, y_bounds
 
 
 def gen_linear_extrapolation(thetas):
@@ -115,40 +115,40 @@ def gen_linear_extrapolation(thetas):
     # y' = a
 
     # [eps, 1 - eps]
-    bounds = get_bounds(thetas)
+    x_bounds = get_bounds(thetas)
 
     # [Be(eps), Be(1 - eps)]
-    b = evaluate_bpoly_on_bounds(thetas, bounds)
+    y_bounds = evaluate_bpoly_on_bounds(thetas, x_bounds)
 
     # [Be'(eps), Be'(1 - eps)]
     dtheta = derive_thetas(thetas)
-    a = evaluate_bpoly_on_bounds(dtheta, bounds)
+    a = evaluate_bpoly_on_bounds(dtheta, x_bounds)
 
     def extra(x):
-        e0 = a[0] * x + b[0]
-        e1 = a[1] * (x - 1) + b[1]
+        e0 = a[0] * x + y_bounds[0]
+        e1 = a[1] * (x - 1) + y_bounds[1]
 
-        y = tf.where(x <= bounds[0], e0, np.nan)
-        y = tf.where(x >= bounds[1], e1, y)
+        y = tf.where(x <= x_bounds[0], e0, np.nan)
+        y = tf.where(x >= x_bounds[1], e1, y)
 
         return y
 
     def extra_log_det_jacobian(x):
-        y = tf.where(x <= bounds[0], a[0], np.nan)
-        y = tf.where(x >= bounds[1], a[1], y)
+        y = tf.where(x <= x_bounds[0], a[0], np.nan)
+        y = tf.where(x >= x_bounds[1], a[1], y)
 
         return tf.math.log(tf.abs(y))
 
     def extra_inv(y):
-        x0 = (y - b[0]) / a[0]
-        x1 = (y - b[1]) / a[1] + 1
+        x0 = (y - y_bounds[0]) / a[0]
+        x1 = (y - y_bounds[1]) / a[1] + 1
 
-        x = tf.where(x0 <= bounds[0], x0, np.nan)
-        x = tf.where(x1 >= bounds[1], x1, x)
+        x = tf.where(x0 <= x_bounds[0], x0, np.nan)
+        x = tf.where(x1 >= x_bounds[1], x1, x)
 
         return x
 
-    return extra, extra_log_det_jacobian, extra_inv, bounds
+    return extra, extra_log_det_jacobian, extra_inv, x_bounds, y_bounds
 
 
 def gen_bernstein_polynomial_with_extrapolation(
@@ -156,23 +156,30 @@ def gen_bernstein_polynomial_with_extrapolation(
 ):
     bpoly, order = gen_bernstein_polynomial(theta)
     dbpoly, _ = derive_bpoly(theta)
-    extra, extra_log_det_jacobian, extra_inv, bounds = gen_extrapolation_fn(theta)
+    extra, extra_log_det_jacobian, extra_inv, x_bounds, y_bounds = gen_extrapolation_fn(
+        theta
+    )
 
-    @tf.function
     def bpoly_extra(x):
-        x_safe = (x <= bounds[0]) | (x >= bounds[1])
-        y = bpoly(tf.where(x_safe, tf.cast(0.5, theta.dtype), x))
-        y = tf.where(x_safe, extra(x), y)
+        x_safe = (x > x_bounds[0]) & (x < x_bounds[1])
+        # breakpoint()
+        y = bpoly(tf.where(x_safe, x, tf.cast(0.5, theta.dtype)))
+        y = tf.where(x_safe, y, extra(x))
         return y
 
-    @tf.function
     def bpoly_log_det_jacobian_extra(x):
-        x_safe = (x <= bounds[0]) | (x >= bounds[1])
-        y = tf.math.log(tf.abs(dbpoly(tf.where(x_safe, tf.cast(0.5, theta.dtype), x))))
-        y = tf.where(x_safe, extra_log_det_jacobian(x), y)
+        x_safe = (x > x_bounds[0]) & (x < x_bounds[1])
+        y = tf.math.log(tf.abs(dbpoly(tf.where(x_safe, x, tf.cast(0.5, theta.dtype)))))
+        y = tf.where(x_safe, y, extra_log_det_jacobian(x))
         return y
 
-    return bpoly_extra, bpoly_log_det_jacobian_extra, extra_inv, order
+    def bpoly_inverse_extra(y, inverse_approx_fn):
+        y_safe = (y > y_bounds[0]) & (y < y_bounds[1])
+        x = inverse_approx_fn(tf.where(y_safe, y, tf.cast(0.5, theta.dtype)))
+        x = tf.where(y_safe, x, extra_inv(y))
+        return x
+
+    return bpoly_extra, bpoly_log_det_jacobian_extra, bpoly_inverse_extra, order
 
 
 def gen_bernstein_polynomial_with_linear_extension(thetas):

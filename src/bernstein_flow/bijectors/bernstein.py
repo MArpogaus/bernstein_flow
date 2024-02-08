@@ -29,10 +29,10 @@
 
 # REQUIRED PYTHON MODULES #####################################################
 
-import numpy as np
+from functools import partial
+
 import tensorflow as tf
 import tensorflow_probability as tfp
-from tensorflow_probability import bijectors as tfb
 from tensorflow_probability.python.internal import (
     dtype_util,
     prefer_static,
@@ -51,7 +51,7 @@ def reshape_output(batch_shape, sample_shape, y):
     return tf.reshape(y, output_shape)
 
 
-class BernsteinBijector(tfb.AutoCompositeTensorBijector):
+class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInverse):
     """
     Implementing Bernstein polynomials using the `tfb.Bijector` interface for
     transformations of a `Distribution` sample.
@@ -73,7 +73,6 @@ class BernsteinBijector(tfb.AutoCompositeTensorBijector):
         :param name: The name to give Ops created by the initializer.
 
         """
-        parameters = dict(locals())
         with tf.name_scope(name) as name:
             dtype = dtype_util.common_dtype([thetas], dtype_hint=tf.float32)
 
@@ -83,28 +82,59 @@ class BernsteinBijector(tfb.AutoCompositeTensorBijector):
 
             if extrapolation:
                 (
-                    self.b_poly,
+                    b_poly,
                     self.b_poly_log_det_jacobian,
-                    self.extra_inv,
+                    self.b_poly_inverse_extra,
                     self.order,
                 ) = gen_bernstein_polynomial_with_linear_extrapolation(self.thetas)
             else:
                 (
-                    self.b_poly,
+                    b_poly,
                     self.b_poly_log_det_jacobian,
-                    self.extra_inv,
+                    self.b_poly_inverse_extra,
                     self.order,
                 ) = gen_bernstein_polynomial_with_linear_extension(self.thetas)
 
-            self.max_iterations = 50
+            def b_poly_reshaped(x):
+                return self._apply_fn_and_reshape_output(x, b_poly)
+
+            domain_constraint_fn = partial(
+                tf.clip_by_value, clip_value_min=0.0, clip_value_max=1.0
+            )
+
+            def root_search_fn(objective_fn, _, max_iterations=None):
+                (
+                    estimated_root,
+                    objective_at_estimated_root,
+                    iteration,
+                ) = tfp.math.find_root_chandrupatla(
+                    objective_fn,
+                    low=tf.convert_to_tensor(0, dtype=dtype),
+                    high=tf.convert_to_tensor(1, dtype=dtype),
+                    position_tolerance=dtype_util.eps(dtype),
+                    # value_tolerance=1e-7,
+                    max_iterations=max_iterations,
+                )
+                return estimated_root, objective_at_estimated_root, iteration
 
             super().__init__(
-                forward_min_event_ndims=0,
+                fn=b_poly_reshaped,
+                domain_constraint_fn=domain_constraint_fn,
+                root_search_fn=root_search_fn,
+                max_iterations=50,
                 name=name,
                 dtype=dtype,
-                parameters=parameters,
                 **kwds,
             )
+
+    def _inverse_no_gradient(self, y):
+        return self._apply_fn_and_reshape_output(
+            y,
+            partial(
+                self.b_poly_inverse_extra,
+                inverse_approx_fn=super()._inverse_no_gradient,
+            ),
+        )
 
     @classmethod
     def _parameter_properties(cls, dtype=None):
@@ -125,33 +155,9 @@ class BernsteinBijector(tfb.AutoCompositeTensorBijector):
 
         return reshape_output(batch_shape, sample_shape, output)
 
-    def _forward(self, x):
-        return self._apply_fn_and_reshape_output(x, self.b_poly)
-
     def _forward_log_det_jacobian(self, x):
+        # tf.print("_forward_log_det_jacobian")
         return self._apply_fn_and_reshape_output(x, self.b_poly_log_det_jacobian)
-
-    def _inverse(self, y):
-        return self._apply_fn_and_reshape_output(y, self._inverse_root_solver)
-
-    def _inverse_root_solver(self, y):
-        # Taken from tfp.experimental.bijectors.ScalarFunctionWithInferredInverse
-        # Root search inside Bernstein domain [0, 1]
-        x, _, num_iterations = tfp.math.find_root_chandrupatla(
-            lambda ux: (self._forward(ux) - y),
-            low=tf.cast(0, dtype=self.dtype),
-            high=tf.cast(1, dtype=self.dtype),
-            position_tolerance=dtype_util.eps(self.dtype),
-            value_tolerance=dtype_util.eps(self.dtype),
-            max_iterations=self.max_iterations,
-        )
-
-        x = tf.where(num_iterations < self.max_iterations, x, np.nan)
-
-        # apply inverse extrapolations
-        extra_inv = self.extra_inv(y)
-
-        return tf.where(tf.math.is_nan(extra_inv), x, extra_inv)
 
     def _is_increasing(self, **kwargs):
         return tf.reduce_all(self.thetas[..., 1:] >= self.thetas[..., :-1])
