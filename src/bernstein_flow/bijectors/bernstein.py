@@ -28,27 +28,17 @@
 ###############################################################################
 
 # REQUIRED PYTHON MODULES #####################################################
-
 from functools import partial
 
 import tensorflow as tf
 import tensorflow_probability as tfp
-from tensorflow_probability.python.internal import (
-    dtype_util,
-    prefer_static,
-    tensor_util,
-)
+from tensorflow_probability.python.internal import dtype_util, tensor_util
 
 from bernstein_flow.activations import get_thetas_constrain_fn
 from bernstein_flow.math.bernstein import (
     gen_bernstein_polynomial_with_linear_extension,
     gen_bernstein_polynomial_with_linear_extrapolation,
 )
-
-
-def reshape_output(batch_shape, sample_shape, y):
-    output_shape = prefer_static.broadcast_shape(sample_shape, batch_shape)
-    return tf.reshape(y, output_shape)
 
 
 class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInverse):
@@ -83,20 +73,17 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
             if extrapolation:
                 (
                     b_poly,
-                    self.b_poly_log_det_jacobian,
+                    self._forward_log_det_jacobian,
                     self.b_poly_inverse_extra,
                     self.order,
                 ) = gen_bernstein_polynomial_with_linear_extrapolation(self.thetas)
             else:
                 (
                     b_poly,
-                    self.b_poly_log_det_jacobian,
+                    self._forward_log_det_jacobian,
                     self.b_poly_inverse_extra,
                     self.order,
                 ) = gen_bernstein_polynomial_with_linear_extension(self.thetas)
-
-            def b_poly_reshaped(x):
-                return self._apply_fn_and_reshape_output(x, b_poly)
 
             domain_constraint_fn = partial(
                 tf.clip_by_value, clip_value_min=0.0, clip_value_max=1.0
@@ -111,14 +98,14 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
                     objective_fn,
                     low=tf.convert_to_tensor(0, dtype=dtype),
                     high=tf.convert_to_tensor(1, dtype=dtype),
-                    position_tolerance=dtype_util.eps(dtype),
+                    position_tolerance=1e-6,  # dtype_util.eps(dtype),
                     # value_tolerance=1e-7,
                     max_iterations=max_iterations,
                 )
                 return estimated_root, objective_at_estimated_root, iteration
 
             super().__init__(
-                fn=b_poly_reshaped,
+                fn=b_poly,
                 domain_constraint_fn=domain_constraint_fn,
                 root_search_fn=root_search_fn,
                 max_iterations=50,
@@ -128,12 +115,8 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
             )
 
     def _inverse_no_gradient(self, y):
-        return self._apply_fn_and_reshape_output(
-            y,
-            partial(
-                self.b_poly_inverse_extra,
-                inverse_approx_fn=super()._inverse_no_gradient,
-            ),
+        return tf.stop_gradient(
+            self.b_poly_inverse_extra(y, inverse_approx_fn=super()._inverse_no_gradient)
         )
 
     @classmethod
@@ -143,21 +126,6 @@ class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInv
                 default_constraining_bijector_fn=get_thetas_constrain_fn, event_ndims=1
             ),
         )
-
-    def _apply_fn_and_reshape_output(self, x, fn):
-        x = tensor_util.convert_nonref_to_tensor(x, name="x", dtype=self.dtype)
-
-        theta_shape = prefer_static.shape(self.thetas)
-        batch_shape = theta_shape[:-1]
-        sample_shape = prefer_static.shape(x)
-
-        output = fn(x)
-
-        return reshape_output(batch_shape, sample_shape, output)
-
-    def _forward_log_det_jacobian(self, x):
-        # tf.print("_forward_log_det_jacobian")
-        return self._apply_fn_and_reshape_output(x, self.b_poly_log_det_jacobian)
 
     def _is_increasing(self, **kwargs):
         return tf.reduce_all(self.thetas[..., 1:] >= self.thetas[..., :-1])

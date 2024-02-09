@@ -4,7 +4,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2022-03-09 08:45:52 (Marcel Arpogaus)
-# changed : 2024-02-08 13:29:50 (Marcel Arpogaus)
+# changed : 2024-02-09 17:01:00 (Marcel Arpogaus)
 # DESCRIPTION #################################################################
 # ...
 # LICENSE #####################################################################
@@ -17,9 +17,14 @@ from tensorflow_probability import distributions as tfd
 from tensorflow_probability.python.internal import dtype_util, prefer_static
 
 
+def reshape_output(batch_shape, sample_shape, y):
+    output_shape = prefer_static.broadcast_shape(sample_shape, batch_shape)
+    return tf.reshape(y, output_shape)
+
+
 def gen_basis(order, dtype=tf.float32):
     return tfd.Beta(
-        tf.range(1, order + 1, dtype=dtype), tf.range(order, 0, -1, dtype=dtype)
+        tf.range(1, order + 2, dtype=dtype), tf.range(order + 1, 0, -1, dtype=dtype)
     )
 
 
@@ -27,7 +32,7 @@ def gen_bernstein_polynomial(thetas):
     theta_shape = prefer_static.shape(thetas)
     order = theta_shape[-1] - 1
 
-    basis = gen_basis(order + 1, thetas.dtype)
+    basis = gen_basis(order, thetas.dtype)
 
     def b_poly(y):
         y = y[..., tf.newaxis]
@@ -154,30 +159,38 @@ def gen_linear_extrapolation(thetas):
 def gen_bernstein_polynomial_with_extrapolation(
     theta, gen_extrapolation_fn=gen_linear_extrapolation
 ):
+    theta_shape = prefer_static.shape(theta)
+    batch_shape = theta_shape[:-1]
+
     bpoly, order = gen_bernstein_polynomial(theta)
     dbpoly, _ = derive_bpoly(theta)
     extra, extra_log_det_jacobian, extra_inv, x_bounds, y_bounds = gen_extrapolation_fn(
         theta
     )
 
+    @tf.function
     def bpoly_extra(x):
+        sample_shape = prefer_static.shape(x)
         x_safe = (x > x_bounds[0]) & (x < x_bounds[1])
-        # breakpoint()
         y = bpoly(tf.where(x_safe, x, tf.cast(0.5, theta.dtype)))
         y = tf.where(x_safe, y, extra(x))
-        return y
+        return reshape_output(batch_shape, sample_shape, y)
 
+    @tf.function
     def bpoly_log_det_jacobian_extra(x):
+        sample_shape = prefer_static.shape(x)
         x_safe = (x > x_bounds[0]) & (x < x_bounds[1])
         y = tf.math.log(tf.abs(dbpoly(tf.where(x_safe, x, tf.cast(0.5, theta.dtype)))))
         y = tf.where(x_safe, y, extra_log_det_jacobian(x))
-        return y
+        return reshape_output(batch_shape, sample_shape, y)
 
+    @tf.function
     def bpoly_inverse_extra(y, inverse_approx_fn):
+        sample_shape = prefer_static.shape(y)
         y_safe = (y > y_bounds[0]) & (y < y_bounds[1])
         x = inverse_approx_fn(tf.where(y_safe, y, tf.cast(0.5, theta.dtype)))
         x = tf.where(y_safe, x, extra_inv(y))
-        return x
+        return reshape_output(batch_shape, sample_shape, x)
 
     return bpoly_extra, bpoly_log_det_jacobian_extra, bpoly_inverse_extra, order
 
