@@ -4,7 +4,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2022-03-09 08:45:52 (Marcel Arpogaus)
-# changed : 2024-02-09 17:01:00 (Marcel Arpogaus)
+# changed : 2024-02-16 16:43:03 (Marcel Arpogaus)
 # DESCRIPTION #################################################################
 # ...
 # LICENSE #####################################################################
@@ -168,7 +168,6 @@ def gen_bernstein_polynomial_with_extrapolation(
         theta
     )
 
-    @tf.function
     def bpoly_extra(x):
         sample_shape = prefer_static.shape(x)
         x_safe = (x > x_bounds[0]) & (x < x_bounds[1])
@@ -176,7 +175,6 @@ def gen_bernstein_polynomial_with_extrapolation(
         y = tf.where(x_safe, y, extra(x))
         return reshape_output(batch_shape, sample_shape, y)
 
-    @tf.function
     def bpoly_log_det_jacobian_extra(x):
         sample_shape = prefer_static.shape(x)
         x_safe = (x > x_bounds[0]) & (x < x_bounds[1])
@@ -184,7 +182,6 @@ def gen_bernstein_polynomial_with_extrapolation(
         y = tf.where(x_safe, y, extra_log_det_jacobian(x))
         return reshape_output(batch_shape, sample_shape, y)
 
-    @tf.function
     def bpoly_inverse_extra(y, inverse_approx_fn):
         sample_shape = prefer_static.shape(y)
         y_safe = (y > y_bounds[0]) & (y < y_bounds[1])
