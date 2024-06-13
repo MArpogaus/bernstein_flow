@@ -5,7 +5,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2021-03-22 16:42:31 (Marcel Arpogaus)
-# changed : 2024-02-06 15:02:27 (Marcel Arpogaus)
+# changed : 2024-02-29 13:36:07 (Marcel Arpogaus)
 # DESCRIPTION ############################################################
 # ...
 # LICENSE ################################################################
@@ -110,7 +110,7 @@ def gen_model(output_shape=9, **kwds):
             Input(1),
             Dense(16, activation="relu"),
             Dense(16, activation="relu"),
-            Dense(output_shape),
+            Dense(output_shape, activation="linear"),
         ]
     )
 
@@ -124,6 +124,7 @@ def gen_model(output_shape=9, **kwds):
     flow_parameter_model.compile(
         optimizer=tf.optimizers.Adam(0.001),
         loss=my_loss_fn,
+        jit_compile=True,
         # run_eagerly=True,
     )
     return flow_parameter_model, bf
