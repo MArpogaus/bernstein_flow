@@ -4,7 +4,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2022-06-01 15:21:22 (Marcel Arpogaus)
-# changed : 2024-06-13 19:28:45 (Marcel Arpogaus)
+# changed : 2024-06-13 21:27:07 (Marcel Arpogaus)
 # DESCRIPTION #################################################################
 #
 # This project is following the PEP8 style guide:
@@ -28,11 +28,15 @@
 ###############################################################################
 # REQUIRED PYTHON MODULES #####################################################
 from functools import partial, reduce
+from typing import Dict, List, Tuple
 
 import matplotlib as mpl
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from matplotlib import pyplot as plt
+import tensorflow_probability as tfp
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from matplotlib.patches import ConnectionPatch
 from matplotlib.text import Annotation
 from tensorflow_probability import bijectors as tfb
@@ -43,8 +47,25 @@ np.random.seed(42)
 tf.random.set_seed(42)
 
 
-def get_annot_map(bijector_names, bijector_name, cnt=0):
-    def annot_map_mapper(name):
+def get_annot_map(bijector_names: List[str], bijector_name: str, cnt: int = 0) -> Dict:
+    """Get a map from bijector names to annotations.
+
+    Parameters
+    ----------
+    bijector_names : List[str]
+        List of bijector names.
+    bijector_name : str
+        Name of the bijector to split the list at.
+    cnt : int, optional
+        Counter for the annotations, by default 0
+
+    Returns
+    -------
+    Dict
+        Dictionary mapping bijector names to annotations.
+    """
+
+    def annot_map_mapper(name: str) -> Tuple[str, str]:
         nonlocal cnt
         if name == "sigmoid":
             annot = r"$\sigma$"
@@ -66,7 +87,19 @@ FORMULAS = {
 }
 
 
-def get_fomulas(bijectors):
+def get_formulas(bijectors: List[tfb.Bijector]) -> str:
+    """Generate LaTeX formulas for a list of bijectors.
+
+    Parameters
+    ----------
+    bijectors : List[tfb.Bijector]
+        List of bijectors.
+
+    Returns
+    -------
+    str
+        LaTeX formulas string.
+    """
     formuals = r"\begin{align*}"
     cnt = 1
     for b in reversed(bijectors):
@@ -81,21 +114,76 @@ def get_fomulas(bijectors):
     return formuals
 
 
-def get_bijectors(flow):
+def get_bijectors(
+    flow: tfp.distributions.TransformedDistribution,
+) -> List[tfb.Bijector]:
+    """Extract bijectors from a transformed distribution.
+
+    Parameters
+    ----------
+    flow : tfp.distributions.TransformedDistribution
+        Transformed distribution.
+
+    Returns
+    -------
+    List[tfb.Bijector]
+        List of bijectors.
+    """
     return flow.bijector.bijector.bijectors
 
 
-def get_bijector_names(bijectors):
+def get_bijector_names(bijectors: List[tfb.Bijector]) -> List[str]:
+    """Get the names of a list of bijectors.
+
+    Parameters
+    ----------
+    bijectors : List[tfb.Bijector]
+        List of bijectors.
+
+    Returns
+    -------
+    List[str]
+        List of bijector names.
+    """
     return list(map(lambda x: x.name, reversed(bijectors)))
 
 
-def split_bijector_names(bijector_names, split_bijector_name):
+def split_bijector_names(
+    bijector_names: List[str], split_bijector_name: str
+) -> Tuple[List[str], List[str]]:
+    """Split a list of bijector names at a given bijector name.
+
+    Parameters
+    ----------
+    bijector_names : List[str]
+        List of bijector names.
+    split_bijector_name : str
+        Name of the bijector to split the list at.
+
+    Returns
+    -------
+    Tuple[List[str], List[str]]
+        Tuple containing the two split lists.
+    """
     bpoly_idx = bijector_names.index(split_bijector_name) + 1
     return bijector_names[:bpoly_idx], bijector_names[bpoly_idx:]
 
 
-def get_intersec_reducer(arr):
-    def reducer(c, i):
+def get_intersec_reducer(arr: List) -> callable:
+    """Generate a reducer function to count intersections.
+
+    Parameters
+    ----------
+    arr : List
+        List to check for intersections.
+
+    Returns
+    -------
+    callable
+        Reducer function.
+    """
+
+    def reducer(c: int, i: int) -> int:
         if i in arr:
             return c + 1
         else:
@@ -104,7 +192,34 @@ def get_intersec_reducer(arr):
     return reducer
 
 
-def get_plot_data(flow, bijector_name, n=200, z_values=None, seed=1):
+def get_plot_data(
+    flow: tfp.distributions.TransformedDistribution,
+    bijector_name: str,
+    n: int = 200,
+    z_values: np.ndarray = None,
+    seed: int = 1,
+) -> Tuple[Dict, List[str], List[str]]:
+    """Generate plot data for a transformed distribution.
+
+    Parameters
+    ----------
+    flow : tfp.distributions.TransformedDistribution
+        Transformed distribution.
+    bijector_name : str
+        Name of the bijector to split the data at.
+    n : int, optional
+        Number of samples, by default 200
+    z_values : np.ndarray, optional
+        Predefined sample values, by default None
+    seed : int, optional
+        Random seed, by default 1
+
+    Returns
+    -------
+    Tuple[Dict, List[str], List[str]]
+        Tuple containing the plot data, post-split bijector names,
+        and pre-split bijector names.
+    """
     tf.random.set_seed(seed)
 
     chained_bijectors = get_bijectors(flow)
@@ -140,7 +255,16 @@ def get_plot_data(flow, bijector_name, n=200, z_values=None, seed=1):
     return plot_data, post_bpoly_trafos, pre_bpoly_trafos
 
 
-def configure_axes(a, style):
+def configure_axes(a: Axes, style: str):
+    """Configure the axes of a plot.
+
+    Parameters
+    ----------
+    a : Axes
+        Axes object to configure.
+    style : str
+        Style of the axes. Can be "right", "top", or "none".
+    """
     if style == "right":
         a.spines["top"].set_color("none")  # don't draw spine
         # a.spines["right"].set_color("none")  # don't draw spine
@@ -163,8 +287,35 @@ def configure_axes(a, style):
 
 
 def prepare_figure(
-    plot_data, pre_bpoly_trafos, post_bpoly_trafos, size=4, wspace=0.5, hspace=0.5
-):
+    plot_data: Dict,
+    pre_bpoly_trafos: List[str],
+    post_bpoly_trafos: List[str],
+    size: int = 4,
+    wspace: float = 0.5,
+    hspace: float = 0.5,
+) -> Tuple[Figure, Dict[str, Axes]]:
+    """Prepare the figure and axes for the plot.
+
+    Parameters
+    ----------
+    plot_data : Dict
+        Plot data.
+    pre_bpoly_trafos : List[str]
+        Pre-split bijector names.
+    post_bpoly_trafos : List[str]
+        Post-split bijector names.
+    size : int, optional
+        Figure size, by default 4
+    wspace : float, optional
+        Width space between subplots, by default 0.5
+    hspace : float, optional
+        Height space between subplots, by default 0.5
+
+    Returns
+    -------
+    Tuple[Figure, Dict[str, Axes]]
+        Tuple containing the figure and a dictionary mapping bijector names to axes.
+    """
     pre_bpoly = reduce(get_intersec_reducer(pre_bpoly_trafos), plot_data.keys(), 0)
     post_bpoly = reduce(get_intersec_reducer(post_bpoly_trafos), plot_data.keys(), 0)
 
@@ -215,7 +366,25 @@ def prepare_figure(
     return fig, axs
 
 
-def plot_data_to_axes(axs, plot_data, pre_bpoly_trafos, post_bpoly_trafos):
+def plot_data_to_axes(
+    axs: Dict[str, Axes],
+    plot_data: Dict,
+    pre_bpoly_trafos: List[str],
+    post_bpoly_trafos: List[str],
+):
+    """Plot the data to the axes.
+
+    Parameters
+    ----------
+    axs : Dict[str, Axes]
+        Dictionary mapping bijector names to axes.
+    plot_data : Dict
+        Plot data.
+    pre_bpoly_trafos : List[str]
+        Pre-split bijector names.
+    post_bpoly_trafos : List[str]
+        Post-split bijector names.
+    """
     scatter_kwds = dict(c="orange", alpha=0.2, s=8)
     cpd_label = "(transformed) distribution"
     sample_label = "(transformed) samples"
@@ -251,19 +420,49 @@ def plot_data_to_axes(axs, plot_data, pre_bpoly_trafos, post_bpoly_trafos):
 
 
 def add_annot_to_axes(
-    axs,
-    plot_data,
-    pre_bpoly_trafos,
-    post_bpoly_trafos,
-    bijector_name,
-    annot_map={},
-    extra_annot_prob={},
-    extra_annot_sample={},
-    formulas="",
-    pos=0.5,
-    cp_kwds=dict(arrowstyle="-|>", shrinkA=10, shrinkB=10, color="gray"),
-    usetex=True,
+    axs: Dict[str, Axes],
+    plot_data: Dict,
+    pre_bpoly_trafos: List[str],
+    post_bpoly_trafos: List[str],
+    bijector_name: str,
+    annot_map: Dict = {},
+    extra_annot_prob: Dict = {},
+    extra_annot_sample: Dict = {},
+    formulas: str = "",
+    pos: float = 0.5,
+    cp_kwds: Dict = dict(arrowstyle="-|>", shrinkA=10, shrinkB=10, color="gray"),
+    usetex: bool = True,
 ):
+    """Add annotations to the axes.
+
+    Parameters
+    ----------
+    axs : Dict[str, Axes]
+        Dictionary mapping bijector names to axes.
+    plot_data : Dict
+        Plot data.
+    pre_bpoly_trafos : List[str]
+        Pre-split bijector names.
+    post_bpoly_trafos : List[str]
+        Post-split bijector names.
+    bijector_name : str
+        Name of the bijector to split the data at.
+    annot_map : Dict, optional
+        Dictionary mapping bijector names to annotations, by default {}
+    extra_annot_prob : Dict, optional
+        Dictionary containing extra annotations for probabilities, by default {}
+    extra_annot_sample : Dict, optional
+        Dictionary containing extra annotations for samples, by default {}
+    formulas : str, optional
+        LaTeX formulas string, by default ""
+    pos : float, optional
+        Position of the arrows, by default 0.5
+    cp_kwds : Dict, optional
+        Keyword arguments for the ConnectionPatch,
+        by default dict(arrowstyle="-|>", shrinkA=10, shrinkB=10, color="gray")
+    usetex : bool, optional
+        Whether to use LaTeX for text rendering, by default True
+    """
     # add arrows for bijectors
     xyA = None
     axA = None
@@ -396,8 +595,43 @@ def add_annot_to_axes(
 
 
 def plot_flow(
-    flow, bijector_name="bpoly", n=500, z_values=None, size=1.5, usetex=True, **kwds
-):
+    flow: tfp.distributions.TransformedDistribution,
+    bijector_name: str = "bpoly",
+    n: int = 500,
+    z_values: np.ndarray = None,
+    size: float = 1.5,
+    usetex: bool = True,
+    **kwds,
+) -> Figure:
+    """Plot a transformed distribution (flow).
+
+    Parameters
+    ----------
+    flow : tfp.distributions.TransformedDistribution
+        Transformed distribution to plot.
+    bijector_name : str, optional
+        Name of the bijector to split the data at, by default "bpoly"
+    n : int, optional
+        Number of samples, by default 500
+    z_values : np.ndarray, optional
+        Predefined sample values, by default None
+    size : float, optional
+        Figure size scaling factor, by default 1.5
+    usetex : bool, optional
+        Whether to use LaTeX for text rendering, by default True
+    **kwds : optional
+        Additional keyword arguments passed to add_annot_to_axes.
+
+    Returns
+    -------
+    Figure
+        The generated matplotlib figure.
+
+    Raises
+    ------
+    AssertionError
+        If the flow is not unimodal (batch shape is not [] or [1]).
+    """
     if usetex:
         plt.rcParams.update(
             {
@@ -421,7 +655,7 @@ def plot_flow(
             annot_map=get_annot_map(
                 get_bijector_names(bijectors), bijector_name=bijector_name
             ),
-            formulas=get_fomulas(bijectors) if usetex else None,
+            formulas=get_formulas(bijectors) if usetex else None,
             usetex=usetex,
         ),
         **kwds,
