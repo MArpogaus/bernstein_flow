@@ -4,12 +4,12 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2022-06-01 15:21:22 (Marcel Arpogaus)
-# changed : 2024-02-05 15:11:32 (Marcel Arpogaus)
+# changed : 2024-06-13 19:28:45 (Marcel Arpogaus)
 # DESCRIPTION #################################################################
 #
 # This project is following the PEP8 style guide:
 #
-#    https://www.python.org/dev/peps/pep-0008/)
+#    https://www.python.org/dev/peps/pep-0008/
 #
 # LICENSE #####################################################################
 # Copyright 2020 Marcel Arpogaus
@@ -43,7 +43,7 @@ np.random.seed(42)
 tf.random.set_seed(42)
 
 
-def get_annot_map(bijector_names, cnt=0):
+def get_annot_map(bijector_names, bijector_name, cnt=0):
     def annot_map_mapper(name):
         nonlocal cnt
         if name == "sigmoid":
@@ -54,7 +54,7 @@ def get_annot_map(bijector_names, cnt=0):
         return (name, annot)
 
     annot_map = dict(map(annot_map_mapper, bijector_names))
-    annot_map.update({"bijector": annot_map["bpoly"]})
+    annot_map.update({"bijector": annot_map[bijector_name]})
     return annot_map
 
 
@@ -89,8 +89,8 @@ def get_bijector_names(bijectors):
     return list(map(lambda x: x.name, reversed(bijectors)))
 
 
-def split_bijector_names(bijector_names):
-    bpoly_idx = bijector_names.index("bpoly") + 1
+def split_bijector_names(bijector_names, split_bijector_name):
+    bpoly_idx = bijector_names.index(split_bijector_name) + 1
     return bijector_names[:bpoly_idx], bijector_names[bpoly_idx:]
 
 
@@ -104,12 +104,14 @@ def get_intersec_reducer(arr):
     return reducer
 
 
-def get_plot_data(flow, n=200, z_values=None, seed=1):
+def get_plot_data(flow, bijector_name, n=200, z_values=None, seed=1):
     tf.random.set_seed(seed)
 
     chained_bijectors = get_bijectors(flow)
     bijector_names = get_bijector_names(chained_bijectors)
-    pre_bpoly_trafos, post_bpoly_trafos = split_bijector_names(bijector_names)
+    pre_bpoly_trafos, post_bpoly_trafos = split_bijector_names(
+        bijector_names, bijector_name
+    )
 
     base_dist = flow.distribution
 
@@ -132,7 +134,7 @@ def get_plot_data(flow, n=200, z_values=None, seed=1):
         zz = z
 
     after_bpoly = next(iter(post_bpoly_trafos), "distribution")
-    z1 = plot_data["bpoly"]["z"]
+    z1 = plot_data[bijector_name]["z"]
     z2 = plot_data[after_bpoly]["z"]
     plot_data["bijector"] = dict(z1=z1, z2=z2)
     return plot_data, post_bpoly_trafos, pre_bpoly_trafos
@@ -253,10 +255,11 @@ def add_annot_to_axes(
     plot_data,
     pre_bpoly_trafos,
     post_bpoly_trafos,
+    bijector_name,
     annot_map={},
     extra_annot_prob={},
     extra_annot_sample={},
-    formuals="",
+    formulas="",
     pos=0.5,
     cp_kwds=dict(arrowstyle="-|>", shrinkA=10, shrinkB=10, color="gray"),
     usetex=True,
@@ -274,7 +277,7 @@ def add_annot_to_axes(
     for kA, kB in zip(ax_names[:-1], ax_names[1:]):
         axA = axs[kA]
         axB = axs[kB]
-        if kA == "bpoly":
+        if kA == bijector_name:
             xyB = (z2, z1)
             kwdsText = dict(
                 xy=(0.5, 0),
@@ -313,7 +316,7 @@ def add_annot_to_axes(
 
     # add formulas
     ax = axs["math"]
-    ax.text(0.5, 0.5, formuals, ha="center", va="center", usetex=usetex)
+    ax.text(0.5, 0.5, formulas, ha="center", va="center", usetex=usetex)
 
     common_arrowprops = dict(
         arrowstyle="-",
@@ -392,7 +395,9 @@ def add_annot_to_axes(
         )
 
 
-def plot_flow(flow, n=500, z_values=None, size=1.5, usetex=True, **kwds):
+def plot_flow(
+    flow, bijector_name="bpoly", n=500, z_values=None, size=1.5, usetex=True, **kwds
+):
     if usetex:
         plt.rcParams.update(
             {
@@ -401,22 +406,32 @@ def plot_flow(flow, n=500, z_values=None, size=1.5, usetex=True, **kwds):
                 "text.usetex": True,  # use inline math for ticks
             }
         )
-    assert flow.batch_shape == [], "Only unimodal distributions supported"
+    assert flow.batch_shape == [] or flow.batch_shape == [
+        1
+    ], "Only unimodal distributions supported"
     plot_data, post_bpoly_trafos, pre_bpoly_trafos = get_plot_data(
-        flow, n=n, z_values=z_values
+        flow, bijector_name=bijector_name, n=n, z_values=z_values
     )
     fig, axs = prepare_figure(plot_data, pre_bpoly_trafos, post_bpoly_trafos, size=size)
     plot_data_to_axes(axs, plot_data, pre_bpoly_trafos, post_bpoly_trafos)
     bijectors = get_bijectors(flow)
+    add_annot_to_axes_kwds = {
+        **dict(
+            bijector_name=bijector_name,
+            annot_map=get_annot_map(
+                get_bijector_names(bijectors), bijector_name=bijector_name
+            ),
+            formulas=get_fomulas(bijectors) if usetex else None,
+            usetex=usetex,
+        ),
+        **kwds,
+    }
     add_annot_to_axes(
         axs,
         plot_data,
         pre_bpoly_trafos,
         post_bpoly_trafos,
-        annot_map=get_annot_map(get_bijector_names(bijectors)),
-        formuals=get_fomulas(bijectors) if usetex else None,
-        usetex=usetex,
-        **kwds,
+        **add_annot_to_axes_kwds,
     )
     handles, labels = axs["distribution"].get_legend_handles_labels()
     fig.legend(
