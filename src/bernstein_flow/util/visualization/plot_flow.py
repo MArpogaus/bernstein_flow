@@ -42,7 +42,7 @@ from matplotlib.patches import ConnectionPatch
 from matplotlib.text import Annotation
 from tensorflow_probability import bijectors as tfb
 
-from bernstein_flow.bijectors import BernsteinBijector
+from bernstein_flow.bijectors import BernsteinPolynomial
 
 np.random.seed(42)
 tf.random.set_seed(42)
@@ -77,7 +77,7 @@ def _get_annot_map(bijector_names: List[str], bijector_name: str) -> Dict[str, s
 FORMULAS = {
     tfb.Scale: r"z_{{{curr}}} & = a_{{{curr}}}(\mathbf{{x}}) \cdot z_{{{prev}}}",
     tfb.Shift: r"z_{{{curr}}} & = z_{{{prev}}} + b_{{{curr}}}(\mathbf{{x}})",
-    BernsteinBijector: r"z_{{{curr}}} & = \frac{{1}}{{M+1}} \sum_{{i=0}}^{{M}}"
+    BernsteinPolynomial: r"z_{{{curr}}} & = \frac{{1}}{{M+1}} \sum_{{i=0}}^{{M}}"
     + r"\operatorname{{Be}}_{{i}}^M(z_{{{prev}}}) \vartheta_{{i}}(\mathbf{{x}})",
 }
 

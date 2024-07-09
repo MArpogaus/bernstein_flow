@@ -4,7 +4,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2022-03-10 15:39:04 (Marcel Arpogaus)
-# changed : 2024-02-06 13:59:51 (Marcel Arpogaus)
+# changed : 2024-07-09 18:08:52 (Marcel Arpogaus)
 # DESCRIPTION #################################################################
 # ...
 # LICENSE #####################################################################
@@ -19,13 +19,14 @@ from tensorflow_probability.python.internal import (
 
 
 def get_thetas_constrain_fn(
-    low=-4,
-    high=4,
+    bounds=(None, None),
     smooth_bounds=True,
     allow_flexible_bounds=False,
     fn=tf.math.softplus,
     eps=1e-5,
 ):
+    low, high = bounds
+
     # @tf.function
     def constrain_fn(diff):
         dtype = dtype_util.common_dtype([diff], dtype_hint=tf.float32)

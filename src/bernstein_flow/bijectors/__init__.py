@@ -1,1 +1,1 @@
-from .bernstein import BernsteinBijector  # noqa F401
+from .bernstein import BernsteinPolynomial  # noqa F401

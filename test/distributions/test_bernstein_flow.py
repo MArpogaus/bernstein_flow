@@ -30,7 +30,6 @@
 # REQUIRED PYTHON MODULES #####################################################
 import pytest
 import tensorflow as tf
-from bernstein_flow.activations import get_thetas_constrain_fn
 from bernstein_flow.distributions import BernsteinFlow
 from tensorflow_probability import distributions as tfd
 from tensorflow_probability.python.internal import test_util
@@ -148,12 +147,10 @@ for dtype in [tf.float32, tf.float64]:
             order=10,
             dtype=dtype,
             base_distribution="log_normal",
-            thetas_constrain_fn=get_thetas_constrain_fn(
-                low=1e-12, high=tf.math.exp(tf.constant(6.0, dtype=dtype))
-            ),
             scale_data=False,
             shift_data=False,
             scale_base_distribution=False,
+            bounds=(1e-12, tf.math.exp(tf.constant(6.0, dtype=dtype))),
         )
         self.f(normal_dist, trans_dist, stay_in_domain=True)
 
@@ -165,13 +162,12 @@ for dtype in [tf.float32, tf.float64]:
             order=10,
             dtype=dtype,
             base_distribution="logistic",
-            thetas_constrain_fn=get_thetas_constrain_fn(
-                low=-20, high=20, allow_flexible_bounds=True
-            ),
             scale_data=True,
             shift_data=True,
             scale_base_distribution=False,
             clip_to_bernstein_domain=False,
+            bounds=(-20, 20),
+            allow_flexible_bounds=True,
         )
         self.f(normal_dist, trans_dist)
 
@@ -183,11 +179,11 @@ for dtype in [tf.float32, tf.float64]:
             order=10,
             dtype=dtype,
             base_distribution="uniform",
-            thetas_constrain_fn=get_thetas_constrain_fn(low=0.0, high=1.0),
             shift_data=False,
             scale_data=False,
             scale_base_distribution=False,
             clip_to_bernstein_domain=False,
+            bounds=(0.0, 1.0),
         )
         self.f(normal_dist, trans_dist, stay_in_domain=True)
 
@@ -203,11 +199,11 @@ for dtype in [tf.float32, tf.float64]:
                 "concentration1": tf.bernstein_poly(5.0, dtype),
                 "concentration0": 2.0,
             },
-            thetas_constrain_fn=get_thetas_constrain_fn(low=0.0, high=1.0),
             shift_data=False,
             scale_data=False,
             scale_base_distribution=False,
             clip_to_bernstein_domain=False,
+            bounds=(0.0, 1.0),
         )
         self.f(normal_dist, trans_dist, stay_in_domain=True)
 
@@ -220,13 +216,12 @@ for dtype in [tf.float32, tf.float64]:
             order=10,
             dtype=dtype,
             base_distribution=student_t,
-            thetas_constrain_fn=get_thetas_constrain_fn(
-                low=-35, high=35, allow_flexible_bounds=True
-            ),
             scale_data=True,
             shift_data=True,
             scale_base_distribution=False,
             clip_to_bernstein_domain=False,
+            bounds=(-35, 35),
+            allow_flexible_bounds=True,
         )
         self.f(normal_dist, trans_dist)
 
@@ -239,11 +234,11 @@ for dtype in [tf.float32, tf.float64]:
             order=10,
             dtype=dtype,
             base_distribution=weibull,
-            thetas_constrain_fn=get_thetas_constrain_fn(low=1e-12, high=100),
             shift_data=False,
             scale_data=False,
             scale_base_distribution=False,
             clip_to_bernstein_domain=False,
+            bounds=(1e-12, 100),
         )
         self.f(normal_dist, trans_dist, stay_in_domain=True)
 

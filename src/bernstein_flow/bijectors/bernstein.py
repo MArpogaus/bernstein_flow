@@ -41,11 +41,8 @@ from bernstein_flow.math.bernstein import (
 )
 
 
-class BernsteinBijector(tfp.experimental.bijectors.ScalarFunctionWithInferredInverse):
-    """
-    Implementing Bernstein polynomials using the `tfb.Bijector` interface for
-    transformations of a `Distribution` sample.
-    """
+class BernsteinPolynomial(tfp.experimental.bijectors.ScalarFunctionWithInferredInverse):
+    """Implementation of a Bernstein polynomials Bijector."""
 
     def __init__(
         self,

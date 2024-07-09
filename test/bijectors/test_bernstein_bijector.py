@@ -32,7 +32,7 @@ from functools import partial
 import tensorflow as tf
 import tensorflow_probability as tfp
 from bernstein_flow.activations import get_thetas_constrain_fn
-from bernstein_flow.bijectors import BernsteinBijector
+from bernstein_flow.bijectors import BernsteinPolynomial
 from tensorflow_probability.python.internal import test_util
 
 
@@ -46,7 +46,7 @@ class BernsteinBijectorTest(tf.test.TestCase):
         eps = 1e-2
         x = tf.random.uniform(x_shape, eps, 1.0 - eps, dtype=dtype)
 
-        bb = BernsteinBijector(thetas=thetas)
+        bb = BernsteinPolynomial(thetas=thetas)
 
         forward_x = bb.forward(x)
         # Use identity to invalidate cache.
