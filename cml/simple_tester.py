@@ -13,8 +13,8 @@ tf.random.set_seed(1)
 # creates a random parameter vector
 thetas = tf.random.uniform((1, M), -3, 2, dtype=tf.float32)
 
-# %% Test Sigmoid
-tcf = get_thetas_constrain_fn(low=-3, high=3, smooth_bounds=True)
+# %% Test no support
+tcf = get_thetas_constrain_fn(bounds=(-3, 3), smooth_bounds=True)
 bpoly = BernsteinPolynomial(thetas=tcf(thetas), extrapolation=True)
 
 x = tf.cast(tf.linspace(-0.5, 1.5, 2000), tf.float32)
@@ -73,16 +73,46 @@ axs[1].legend()
 fig.tight_layout()
 fig.savefig("extra_with_invers.png")
 
-# %% boundedn b poly
+# %% Test support
+tcf = get_thetas_constrain_fn(bounds=(-3, 3), smooth_bounds=True)
+bpoly = BernsteinPolynomial(
+    thetas=tcf(thetas), extrapolation=True, analytic_jacobian=True, domain=(-5, 15)
+)
 
-low = -3
-high = 33
+x = tf.cast(tf.linspace(-5.5, 15.5, 2000), tf.float32)
+[y, y_grad] = tfp.math.value_and_gradient(bpoly, x)
 
-positive_fn = tf.exp
-thetas = tf.rand(size=(M,))  # creates a random parameter vector
-theta_low = low - thetas[:1].exp()
-theta_high = high + thetas[-1:].exp()
-diff = tf.nn.functional.softmax(thetas[1:-1], dim=-1)
-diff *= (theta_high - theta_low) - 2 * bpoly.eps
+xx = bpoly.inverse(tf.identity(y))
 
-tf.cat([tf.cumsum(tf.cat([theta_low, diff], dim=-1), dim=-1), theta_high], dim=-1)
+fldj = bpoly.forward_log_det_jacobian(x, 0).numpy()
+J = np.log(np.abs(np.gradient(y, np.diff(x).mean())))
+
+ildj = bpoly.inverse_log_det_jacobian(y, 0).numpy()
+iJ = np.log(abs(np.gradient(x)))
+
+f"{x.shape=}, {xx.shape=}, {y.shape=}, {y_grad.shape=} {fldj.shape=}, {J.shape=}, {ildj.shape=}, {iJ.shape=}"
+
+
+# %% Plot
+fig, axs = plt.subplots(2, sharex=True)
+fig.suptitle("Bernstein polynomial and inverse with extrapolation")
+axs[0].plot(x, y, label="Bernstein polynomial")
+# axs[0].scatter(
+#     tf.linspace(-10, 10, bpoly.order + 1),
+#     bpoly.theta.numpy().flatten(),
+#     label="Bernstein coefficients",
+# )
+axs[0].plot(xx, y, ":", label="inverse")
+axs[0].legend()
+axs[1].plot(x, fldj, label="fldj")
+axs[1].plot(x, np.log(np.abs(y_grad)), ":", label="y_grad")
+# axs[1].plot(x, -ildj, label="-ifldj")
+# axs[1].scatter(
+#     tf.linspace(-10, 10, bpoly.order),
+#     bpoly.dtheta.numpy().flatten(),
+#     label="dtheta",
+# )
+# axs[1].plot(x, J, ":", label="ladj (numpy)")
+axs[1].legend()
+fig.tight_layout()
+fig.savefig("extra_with_invers.png")
