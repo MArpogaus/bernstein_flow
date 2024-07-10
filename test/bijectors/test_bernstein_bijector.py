@@ -1,17 +1,12 @@
-# AUTHOR INFORMATION ##########################################################
+# -*- time-stamp-pattern: "changed[\s]+:[\s]+%%$"; -*-
+# %% Author ####################################################################
 # file    : test_bernstein_bijector.py
-# brief   : [Description]
+# author  : Marcel Arpogaus <znepry.necbtnhf@tznvy.pbz>
 #
-# author  : Marcel Arpogaus
-# created : 2020-10-16 08:12:04
-# changed : 2020-11-23 18:03:28
-# DESCRIPTION #################################################################
-#
-# This project is following the PEP8 style guide:
-#
-#    https://www.python.org/dev/peps/pep-0008/)
-#
-# LICENSE #####################################################################
+# created : 2024-07-10 10:09:06 (Marcel Arpogaus)
+# changed : 2024-07-10 10:09:06 (Marcel Arpogaus)
+
+# %% License ###################################################################
 # Copyright 2020 Marcel Arpogaus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,9 +20,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-###############################################################################
+
+# %% Description ###############################################################
+"""Unit test for Bernstein polynomial bijector."""
+
 # REQUIRED PYTHON MODULES #####################################################
 from functools import partial
+from itertools import product
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -83,129 +82,89 @@ class BernsteinBijectorTest(tf.test.TestCase):
         self.assertAllInRange(grad, thetas.dtype.min, thetas.dtype.max)
 
     def test_inverse_float32(self):
-        self.f(
-            batch_shape=[],
-            x_shape=[100],
-            order=10,
-            dtype=tf.float32,
-            extrapolation=False,
-        )
-        self.f(
-            batch_shape=[],
-            x_shape=[100],
-            order=10,
-            dtype=tf.float32,
-            extrapolation=True,
-        )
+        for extrapolation, domain in product([True, False], [None, [-4, 5]]):
+            self.f(
+                batch_shape=[],
+                x_shape=[100],
+                order=10,
+                dtype=tf.float32,
+                extrapolation=extrapolation,
+                domain=domain,
+            )
 
     def test_inverse_batched_float32(self):
-        self.f(
-            batch_shape=[2],
-            x_shape=[100, 2],
-            order=10,
-            dtype=tf.float32,
-            extrapolation=False,
-        )
-        self.f(
-            batch_shape=[2],
-            x_shape=[100, 2],
-            order=10,
-            dtype=tf.float32,
-            extrapolation=True,
-        )
+        for extrapolation, domain in product([True, False], [None, [-4, 5]]):
+            self.f(
+                batch_shape=[2],
+                x_shape=[100, 2],
+                order=10,
+                dtype=tf.float32,
+                extrapolation=extrapolation,
+                domain=domain,
+            )
 
     def test_inverse_batched_multi_float32(self):
-        self.f(
-            batch_shape=[2, 4],
-            x_shape=[100, 2, 4],
-            order=10,
-            dtype=tf.float32,
-            extrapolation=False,
-        )
-        self.f(
-            batch_shape=[2, 4],
-            x_shape=[100, 2, 4],
-            order=10,
-            dtype=tf.float32,
-            extrapolation=True,
-        )
+        for extrapolation, domain in product([True, False], [None, [-4, 5]]):
+            self.f(
+                batch_shape=[2, 4],
+                x_shape=[100, 2, 4],
+                order=10,
+                dtype=tf.float32,
+                extrapolation=extrapolation,
+                domain=domain,
+            )
 
     def test_inverse_batched_multi_huge_float32(self):
-        self.f(
-            batch_shape=[16, 48],
-            x_shape=[100, 16, 48],
-            order=10,
-            dtype=tf.float32,
-            extrapolation=False,
-        )
-        self.f(
-            batch_shape=[16, 48],
-            x_shape=[100, 16, 48],
-            order=10,
-            dtype=tf.float32,
-            extrapolation=True,
-        )
+        for extrapolation, domain in product([True, False], [None, [-4, 5]]):
+            self.f(
+                batch_shape=[16, 48],
+                x_shape=[100, 16, 48],
+                order=10,
+                dtype=tf.float32,
+                extrapolation=extrapolation,
+                domain=domain,
+            )
 
     def test_inverse_float64(self):
-        self.f(
-            batch_shape=[],
-            x_shape=[100],
-            order=10,
-            dtype=tf.float64,
-            extrapolation=False,
-        )
-        self.f(
-            batch_shape=[],
-            x_shape=[100],
-            order=10,
-            dtype=tf.float64,
-            extrapolation=True,
-        )
+        for extrapolation, domain in product([True, False], [None, [-4, 5]]):
+            self.f(
+                batch_shape=[],
+                x_shape=[100],
+                order=10,
+                dtype=tf.float64,
+                extrapolation=extrapolation,
+                domain=domain,
+            )
 
     def test_inverse_batched_float64(self):
-        self.f(
-            batch_shape=[2],
-            x_shape=[100, 2],
-            order=10,
-            dtype=tf.float64,
-            extrapolation=False,
-        )
-        self.f(
-            batch_shape=[2],
-            x_shape=[100, 2],
-            order=10,
-            dtype=tf.float64,
-            extrapolation=True,
-        )
+        for extrapolation, domain in product([True, False], [None, [-4, 5]]):
+            self.f(
+                batch_shape=[2],
+                x_shape=[100, 2],
+                order=10,
+                dtype=tf.float64,
+                extrapolation=extrapolation,
+                domain=domain,
+            )
 
     def test_inverse_batched_multi_float64(self):
-        self.f(
-            batch_shape=[2, 4],
-            x_shape=[100, 2, 4],
-            order=10,
-            dtype=tf.float64,
-            extrapolation=False,
-        )
-        self.f(
-            batch_shape=[2, 4],
-            x_shape=[100, 2, 4],
-            order=10,
-            dtype=tf.float64,
-            extrapolation=True,
-        )
+        for extrapolation, domain in product([True, False], [None, [-4, 5]]):
+            self.f(
+                batch_shape=[2, 4],
+                x_shape=[100, 2, 4],
+                order=10,
+                dtype=tf.float64,
+                extrapolation=extrapolation,
+                domain=domain,
+            )
 
     def test_inverse_batched_multi_huge_float64(self):
-        self.f(
-            batch_shape=[16, 48],
-            x_shape=[100, 16, 48],
-            order=10,
-            dtype=tf.float64,
-            extrapolation=False,
-        )
-        self.f(
-            batch_shape=[16, 48],
-            x_shape=[100, 16, 48],
-            order=10,
-            dtype=tf.float64,
-            extrapolation=True,
-        )
+        for extrapolation, domain in product([True, False], [None, [-4, 5]]):
+            self.f(
+                batch_shape=[16, 48],
+                x_shape=[100, 16, 48],
+                order=10,
+                dtype=tf.float64,
+                extrapolation=extrapolation,
+                domain=domain,
+            )

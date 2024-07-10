@@ -29,6 +29,7 @@
 
 # REQUIRED PYTHON MODULES #####################################################
 from functools import partial
+from typing import Tuple
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -47,7 +48,9 @@ class BernsteinPolynomial(tfp.experimental.bijectors.ScalarFunctionWithInferredI
     def __init__(
         self,
         thetas: tf.Tensor,
-        extrapolation: str = True,
+        extrapolation: bool = True,
+        analytic_jacobian: bool = True,
+        domain: Tuple[int, ...] = None,
         name: str = "bernstein_bijector",
         **kwds,
     ) -> None:
@@ -70,20 +73,34 @@ class BernsteinPolynomial(tfp.experimental.bijectors.ScalarFunctionWithInferredI
             if extrapolation:
                 (
                     b_poly,
-                    self._forward_log_det_jacobian,
+                    forward_log_det_jacobian,
                     self.b_poly_inverse_extra,
                     self.order,
-                ) = gen_bernstein_polynomial_with_linear_extrapolation(self.thetas)
+                ) = gen_bernstein_polynomial_with_linear_extrapolation(
+                    self.thetas, domain=domain
+                )
             else:
                 (
                     b_poly,
-                    self._forward_log_det_jacobian,
+                    forward_log_det_jacobian,
                     self.b_poly_inverse_extra,
                     self.order,
-                ) = gen_bernstein_polynomial_with_linear_extension(self.thetas)
+                ) = gen_bernstein_polynomial_with_linear_extension(
+                    self.thetas, domain=domain
+                )
+
+            if domain:
+                low = tf.convert_to_tensor(domain[0], dtype=dtype)
+                high = tf.convert_to_tensor(domain[1], dtype=dtype)
+            else:
+                low = tf.convert_to_tensor(0, dtype=dtype)
+                high = tf.convert_to_tensor(1, dtype=dtype)
+
+            if analytic_jacobian:
+                self._forward_log_det_jacobian = forward_log_det_jacobian
 
             domain_constraint_fn = partial(
-                tf.clip_by_value, clip_value_min=0.0, clip_value_max=1.0
+                tf.clip_by_value, clip_value_min=low, clip_value_max=high
             )
 
             def root_search_fn(objective_fn, _, max_iterations=None):
@@ -93,8 +110,8 @@ class BernsteinPolynomial(tfp.experimental.bijectors.ScalarFunctionWithInferredI
                     iteration,
                 ) = tfp.math.find_root_chandrupatla(
                     objective_fn,
-                    low=tf.convert_to_tensor(0, dtype=dtype),
-                    high=tf.convert_to_tensor(1, dtype=dtype),
+                    low=low,
+                    high=high,
                     position_tolerance=1e-6,  # dtype_util.eps(dtype),
                     # value_tolerance=1e-7,
                     max_iterations=max_iterations,
