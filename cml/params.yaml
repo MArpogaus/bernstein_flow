@@ -4,15 +4,13 @@ bimodal:
     epochs: 1000
   model_kwds:
     output_shape: 20
-    thetas_constrain_fn: !!python/object/apply:bernstein_flow.activations.get_thetas_constrain_fn
-      kwds:
-        low: -3
-        high: 3
-        allow_flexible_bounds: true
-        smooth_bounds: true
     clip_to_bernstein_domain: false
     scale_base_distribution: false
     scale_data: true
     shift_data: true
-    extrapolation: true
+    bernstein_bijector_kwargs:
+        extrapolation: true
+    bounds: [-3, 3]
+    allow_flexible_bounds: true
+    smooth_bounds: true
   scale_data_to_domain: false

@@ -5,7 +5,7 @@
 # author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
 #
 # created : 2021-03-22 11:14:00 (Marcel Arpogaus)
-# changed : 2024-02-06 14:58:19 (Marcel Arpogaus)
+# changed : 2024-07-10 10:22:54 (Marcel Arpogaus)
 # DESCRIPTION ############################################################
 # ...
 # LICENSE ################################################################
@@ -37,7 +37,7 @@ def bnf(pv):
         scale_data=True,
         shift_data=True,
         scale_base_distribution=False,
-        extrapolation=True,
+        bernstein_bijector_kwargs=dict(extrapolation=True),
     )
 
 
