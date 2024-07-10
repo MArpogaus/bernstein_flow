@@ -1,24 +1,25 @@
 [build-system]
 build-backend = "setuptools.build_meta"
-requires = ["setuptools >= 61.0.0"]
+requires = ["setuptools >= 61", "setuptools_scm>=7"]
 
 [project]
 classifiers = [
   "Programming Language :: Python :: 3.7",
   "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
-  "Programming Language :: Python :: 3.10"
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11"
 ]
 dependencies = [
-  "tensorflow>=2.5",
-  "tensorflow_probability>=0.13",
+  "tensorflow>=2.5, <2.16",
+  "tensorflow_probability>=0.13, <0.24",
   "matplotlib"
 ]
 dynamic = ["version"]
 license = {text = "Apache Software License (Apache 2.0)"}
 name = "bernstein_flow"
 readme = "README.md"
-requires-python = ">=3.7, <3.11"
+requires-python = ">=3.7, <3.12"
 
 [project.optional-dependencies]
 develop = [
@@ -67,8 +68,10 @@ skip-magic-trailing-comma = false
 fixable = ["ALL"]
 ignore = []
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
-select = ["I", "E", "F"]
+select = ["I", "E", "F", "D"]
 unfixable = []
 
-[tool.setuptools.dynamic]
-version = {attr = "bernstein_flow.__version__"}
+[tool.setuptools_scm]
+# https://stackoverflow.com/a/74404703
+# omits local version, useful because pypi does not support it
+local_scheme = "no-local-version"
