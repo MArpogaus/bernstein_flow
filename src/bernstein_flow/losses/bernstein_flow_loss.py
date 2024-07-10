@@ -1,17 +1,12 @@
-# AUTHOR INFORMATION ##########################################################
+# -*- time-stamp-pattern: "changed[\s]+:[\s]+%%$"; -*-
+# %% Author ####################################################################
 # file    : bernstein_flow_loss.py
-# brief   : [Description]
+# author  : Marcel Arpogaus <znepry.necbtnhf@tznvy.pbz>
 #
-# author  : Marcel Arpogaus
-# created : 2020-03-31 19:22:59
-# changed : 2020-10-26 11:11:39
-# DESCRIPTION #################################################################
-#
-# This project is following the PEP8 style guide:
-#
-#    https://www.python.org/dev/peps/pep-0008/)
-#
-# LICENSE #####################################################################
+# created : 2024-07-10 10:13:31 (Marcel Arpogaus)
+# changed : 2024-07-10 10:13:31 (Marcel Arpogaus)
+
+# %% License ###################################################################
 # Copyright 2020 Marcel Arpogaus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,47 +20,50 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-###############################################################################
 
-# REQUIRED PYTHON MODULES #####################################################
-import tensorflow as tf
+# %% Description ###############################################################
+"""Custom loss function to calculate the negative logarithmic likelihood with a BNF."""
+
+# %% Imports ###################################################################
+from tensorflow import Tensor
 from tensorflow.keras.losses import Loss
 
 from bernstein_flow.distributions import BernsteinFlow
 
 
+# %% Classes ###################################################################
 class BernsteinFlowLoss(Loss):
-    """
-    This Keras Loss function implements the negative logarithmic likelihood for
+    """This Keras Loss function implements the negative logarithmic likelihood for
     a bijective transformation model using Bernstein polynomials.
     """
 
-    def __init__(self, **kwargs: dict):
-        """
-        Constructs a new instance of the Keras Loss function.
+    def __init__(self, **kwargs: dict) -> None:
+        """Construct a new instance of the Keras Loss function.
 
-        :param      M:       Order of the used Bernstein polynomial bijector.
-        :type       M:       int
-        :param      kwargs:  Additional keyword arguments passed to the supper
-                             class
-        :type       kwargs:  dictionary
+        Parameters
+        ----------
+        kwargs : dict
+            Additional keyword arguments passed to the super class
+
         """
         super().__init__(**kwargs)
 
-    def call(self, y: tf.Tensor, pvector: tf.Tensor) -> tf.Tensor:
-        """
-        Evaluates the negative logarithmic likelihood given a sample y.
+    def call(self, y: Tensor, pvector: Tensor) -> Tensor:
+        """Evaluate the negative logarithmic likelihood given a sample y.
 
-        :param      y:        A sample.
-        :type       y:        Tensor
-        :param      pvector:  The parameter vector for the normalizing flow.
-        :type       pvector:  Tensor
+        Parameters
+        ----------
+        y : Tensor
+            A sample.
+        pvector : Tensor
+            The parameter vector for the normalizing flow.
 
-        :returns:   negative logarithmic likelihood
-        :rtype:     Tensor
+        Returns
+        -------
+        Tensor
+            Negative logarithmic likelihood.
+
         """
         flow = BernsteinFlow.new(pvector)
-
         nll = -flow.log_prob(y)
-
         return nll
