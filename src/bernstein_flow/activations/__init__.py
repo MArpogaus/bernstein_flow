@@ -4,7 +4,7 @@
 # author  : Marcel Arpogaus <znepry.necbtnhf@tznvy.pbz>
 #
 # created : 2024-07-12 15:12:18 (Marcel Arpogaus)
-# changed : 2024-07-12 15:20:43 (Marcel Arpogaus)
+# changed : 2024-07-12 15:39:47 (Marcel Arpogaus)
 
 # %% License ###################################################################
 # Copyright 2024 Marcel Arpogaus
@@ -25,6 +25,8 @@
 """Activation functions applied to unconstrained outputs of neural networks."""
 
 # %% imports ###################################################################
+from typing import Tuple, Union
+
 import tensorflow as tf
 from tensorflow_probability.python.internal import (
     dtype_util,
@@ -35,7 +37,7 @@ from tensorflow_probability.python.internal import (
 
 # %% functions #################################################################
 def get_thetas_constrain_fn(
-    bounds: tuple[float | None, float | None] = (None, None),
+    bounds: Tuple[Union[float, None], Union[float, None]] = (None, None),
     smooth_bounds: bool = True,
     allow_flexible_bounds: bool = False,
     fn=tf.math.softplus,
