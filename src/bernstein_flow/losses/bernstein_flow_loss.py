@@ -4,7 +4,7 @@
 # author  : Marcel Arpogaus <znepry.necbtnhf@tznvy.pbz>
 #
 # created : 2024-07-10 10:13:31 (Marcel Arpogaus)
-# changed : 2024-07-10 10:13:31 (Marcel Arpogaus)
+# changed : 2024-07-12 15:17:17 (Marcel Arpogaus)
 
 # %% License ###################################################################
 # Copyright 2020 Marcel Arpogaus
@@ -33,9 +33,7 @@ from bernstein_flow.distributions import BernsteinFlow
 
 # %% Classes ###################################################################
 class BernsteinFlowLoss(Loss):
-    """This Keras Loss function implements the negative logarithmic likelihood for
-    a bijective transformation model using Bernstein polynomials.
-    """
+    """NLL of a bijective transformation model using Bernstein polynomials."""
 
     def __init__(self, **kwargs: dict) -> None:
         """Construct a new instance of the Keras Loss function.

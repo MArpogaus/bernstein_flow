@@ -4,10 +4,10 @@
 # author  : Marcel Arpogaus <znepry.necbtnhf@tznvy.pbz>
 #
 # created : 2024-07-10 10:10:18 (Marcel Arpogaus)
-# changed : 2024-07-10 10:10:28 (Marcel Arpogaus)
+# changed : 2024-07-12 15:23:22 (Marcel Arpogaus)
 
 # %% License ###################################################################
-# Copyright 2020 Marcel Arpogaus
+# Copyright 2024 Marcel Arpogaus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@
 
 # %% Description ###############################################################
 """Mathematical definitions of Bernstein Polynomials."""
+
 
 # %% Imports ###################################################################
 from typing import Callable, Optional, Tuple
@@ -415,7 +416,7 @@ def transform_to_support(y: Tensor, low: Tensor, high: Tensor) -> Tensor:
     return y * (high - low) + low
 
 
-def gen_bernstein_polynomial_with_extrapolation(
+def generate_bernstein_polynomial_with_extrapolation(
     theta: Tensor,
     gen_extrapolation_fn: Callable = gen_linear_extrapolation,
     domain: Optional[Tuple[Tensor, Tensor]] = None,
@@ -576,7 +577,7 @@ def gen_bernstein_polynomial_with_extrapolation(
         return bpoly_extra, bpoly_log_det_jacobian_extra, bpoly_inverse_extra, order
 
 
-def gen_bernstein_polynomial_with_linear_extension(*args, **kwargs):
+def generate_bernstein_polynomial_with_linear_extension(*args, **kwargs):
     """Generate a Bernstein polynomial with linear extension.
 
     Args:
@@ -591,12 +592,12 @@ def gen_bernstein_polynomial_with_linear_extension(*args, **kwargs):
         `gen_extrapolation_fn` set to `gen_linear_extension`.
 
     """
-    return gen_bernstein_polynomial_with_extrapolation(
+    return generate_bernstein_polynomial_with_extrapolation(
         *args, gen_extrapolation_fn=gen_linear_extension, **kwargs
     )
 
 
-def gen_bernstein_polynomial_with_linear_extrapolation(*args, **kwargs):
+def generate_bernstein_polynomial_with_linear_extrapolation(*args, **kwargs):
     """Generate a Bernstein polynomial with linear extrapolation.
 
     Args:
@@ -611,6 +612,6 @@ def gen_bernstein_polynomial_with_linear_extrapolation(*args, **kwargs):
         `gen_extrapolation_fn` set to `gen_linear_extrapolation`.
 
     """
-    return gen_bernstein_polynomial_with_extrapolation(
+    return generate_bernstein_polynomial_with_extrapolation(
         *args, gen_extrapolation_fn=gen_linear_extrapolation, **kwargs
     )

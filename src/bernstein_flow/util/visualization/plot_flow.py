@@ -1,19 +1,13 @@
-"""Convenience Function to plot a normalizing flow."""
 # -*- time-stamp-pattern: "changed[\s]+:[\s]+%%$"; -*-
-# AUTHOR INFORMATION ##########################################################
+# %% Author ####################################################################
 # file    : plot_flow.py
-# author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
+# author  : Marcel Arpogaus <znepry.necbtnhf@tznvy.pbz>
 #
-# created : 2022-06-01 15:21:22 (Marcel Arpogaus)
-# changed : 2024-06-13 22:57:11 (Marcel Arpogaus)
-# DESCRIPTION #################################################################
-#
-# This project is following the PEP8 style guide:
-#
-#    https://www.python.org/dev/peps/pep-0008/
-#
-# LICENSE #####################################################################
-# Copyright 2020 Marcel Arpogaus
+# created : 2024-07-12 14:49:21 (Marcel Arpogaus)
+# changed : 2024-07-12 14:49:21 (Marcel Arpogaus)
+
+# %% License ###################################################################
+# Copyright 2024 Marcel Arpogaus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,8 +20,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-###############################################################################
-# REQUIRED PYTHON MODULES #####################################################
+
+# %% Description ###############################################################
+"""Convenience Function to plot a normalizing flow."""
+
+# %% imports ###################################################################
 from functools import partial
 from typing import Dict, List, Tuple
 

@@ -1,15 +1,30 @@
 # -*- time-stamp-pattern: "changed[\s]+:[\s]+%%$"; -*-
-# AUTHOR INFORMATION ##########################################################
+# %% Author ####################################################################
 # file    : __init__.py
-# author  : Marcel Arpogaus <marcel dot arpogaus at gmail dot com>
+# author  : Marcel Arpogaus <znepry.necbtnhf@tznvy.pbz>
 #
-# created : 2022-03-10 15:39:04 (Marcel Arpogaus)
-# changed : 2024-07-09 18:08:52 (Marcel Arpogaus)
-# DESCRIPTION #################################################################
-# ...
-# LICENSE #####################################################################
-# ...
-###############################################################################
+# created : 2024-07-12 15:12:18 (Marcel Arpogaus)
+# changed : 2024-07-12 15:20:43 (Marcel Arpogaus)
+
+# %% License ###################################################################
+# Copyright 2024 Marcel Arpogaus
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# %% Description ###############################################################
+"""Activation functions applied to unconstrained outputs of neural networks."""
+
+# %% imports ###################################################################
 import tensorflow as tf
 from tensorflow_probability.python.internal import (
     dtype_util,
@@ -18,17 +33,39 @@ from tensorflow_probability.python.internal import (
 )
 
 
+# %% functions #################################################################
 def get_thetas_constrain_fn(
-    bounds=(None, None),
-    smooth_bounds=True,
-    allow_flexible_bounds=False,
+    bounds: tuple[float | None, float | None] = (None, None),
+    smooth_bounds: bool = True,
+    allow_flexible_bounds: bool = False,
     fn=tf.math.softplus,
-    eps=1e-5,
+    eps: float = 1e-5,
 ):
+    """Return a function that constrains the output of a neural network.
+
+    Parameters
+    ----------
+    bounds
+        The lower and upper bounds of the output.
+    smooth_bounds
+        Whether to ensure smooth the bounds by enforcing `Be''(0)==Be(1)==0`.
+    allow_flexible_bounds
+        Whether to allow the bounds to be flexible, i.e. to depend on the input.
+    fn
+        The positive definite function to apply to the unconstrained parameters.
+    eps
+        A small number to add to the output to avoid numerical issues.
+
+    Returns
+    -------
+    callable
+        A function that constrains the output of a neural network.
+
+    """
     low, high = bounds
 
     # @tf.function
-    def constrain_fn(diff):
+    def constrain_fn(diff: tf.Tensor):
         dtype = dtype_util.common_dtype([diff], dtype_hint=tf.float32)
         diff = tensor_util.convert_nonref_to_tensor(diff, name="diff", dtype=dtype)
 

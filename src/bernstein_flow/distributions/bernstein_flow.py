@@ -1,18 +1,13 @@
 # -*- time-stamp-pattern: "changed[\s]+:[\s]+%%$"; -*-
-# AUTHOR INFORMATION ###########################################################
+# %% Author ####################################################################
 # file    : bernstein_flow.py
 # author  : Marcel Arpogaus <znepry.necbtnhf@tznvy.pbz>
 #
-# created : 2020-05-15 10:44:23 (Marcel Arpogaus)
-# changed : 2024-06-25 19:32:32 (Marcel Arpogaus)
-# DESCRIPTION ##################################################################
-#
-# This project is following the PEP8 style guide:
-#
-#    https://www.python.org/dev/peps/pep-0008/)
-#
-# COPYRIGHT ####################################################################
-# Copyright 2020 Marcel Arpogaus
+# created : 2024-07-12 14:55:22 (Marcel Arpogaus)
+# changed : 2024-07-12 15:21:35 (Marcel Arpogaus)
+
+# %% License ###################################################################
+# Copyright 2024 Marcel Arpogaus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,10 +20,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-################################################################################
 
-# REQUIRED PYTHON MODULES ######################################################
-from typing import Callable, Dict, Optional
+# %% Description ###############################################################
+"""Normalizing flow using Bernstein Polynomial as transformation function."""
+
+# %% imports ###################################################################
+from typing import Any, Callable, Dict, Optional
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -44,19 +41,22 @@ from bernstein_flow.activations import get_thetas_constrain_fn
 from bernstein_flow.bijectors import BernsteinPolynomial
 
 
-def slice_parameter_vector(params: tf.Tensor, p_spec: dict) -> dict:
-    """Slices parameters of the given size from a tensor.
+# %% functions #################################################################
+def slice_parameter_vector(
+    params: tf.Tensor, p_spec: Dict[str, int]
+) -> Dict[str, tf.Tensor]:
+    """Slice parameters of the given size from a tensor.
 
     Parameters
     ----------
-    params : tf.Tensor
+    params
         The parameter vector.
-    p_spec : dict
+    p_spec
         Specification of parameter sizes in the form {'parameter_name': size}.
 
     Returns
     -------
-    dict
+    Dict[str, tf.Tensor]
         Dictionary containing the sliced parameters.
 
     """
@@ -71,21 +71,21 @@ def slice_parameter_vector(params: tf.Tensor, p_spec: dict) -> dict:
 
 
 def apply_constraining_bijectors(
-    unconstrained_parameters: dict,
-    thetas_constrain_fn: Optional[Callable] = None,
-) -> dict:
+    unconstrained_parameters: Dict[str, tf.Tensor],
+    thetas_constraint_fn: Optional[Callable] = None,
+) -> Dict[str, tf.Tensor]:
     """Apply activation functions to raw parameters.
 
     Parameters
     ----------
-    unconstrained_parameters : dict
+    unconstrained_parameters
         Dictionary of raw parameters.
-    thetas_constrain_fn : Callable, optional
+    thetas_constraint_fn
         Function used to constrain the Bernstein coefficients, by default None.
 
     Returns
     -------
-    dict
+    Dict[str, tf.Tensor]
         Dictionary with constrained parameters.
 
     """
@@ -93,8 +93,8 @@ def apply_constraining_bijectors(
         parameters = {}
 
         for parameter_name, parameter in unconstrained_parameters.items():
-            if parameter_name == "thetas" and (thetas_constrain_fn is not None):
-                constraining_bijector = thetas_constrain_fn
+            if parameter_name == "thetas" and (thetas_constraint_fn is not None):
+                constraining_bijector = thetas_constraint_fn
             else:
                 parameter_properties = BernsteinFlow.parameter_properties(
                     dtype=parameter.dtype
@@ -112,22 +112,24 @@ def init_bijectors(
     a1: Optional[tf.Tensor] = None,
     b1: Optional[tf.Tensor] = None,
     a2: Optional[tf.Tensor] = None,
-    **bernstein_bijector_kwargs,
+    **bernstein_bijector_kwargs: Dict[str, Any],
 ) -> tfb.Bijector:
     """Build a normalizing flow using a Bernstein polynomial as Bijector.
 
     Parameters
     ----------
-    thetas : tf.Tensor
+    thetas
         The Bernstein coefficients.
-    clip_to_bernstein_domain : bool
+    clip_to_bernstein_domain
         Whether to clip to the Bernstein domain [0, 1].
-    a1 : tf.Tensor, optional
+    a1
         The scale of f1., by default None.
-    b1 : tf.Tensor, optional
+    b1
         The shift of f1., by default None.
-    a2 : tf.Tensor, optional
+    a2
         The scale of f3., by default None.
+    bernstein_bijector_kwargs
+        Keyword arguments passed to the `BernsteinPolynomial`
 
     Returns
     -------
@@ -167,16 +169,18 @@ def init_bijectors(
 
 
 def get_base_distribution(
-    base_distribution: str, dtype: tf.DType, **kwargs
+    base_distribution: str, dtype: tf.DType, **kwargs: Dict[str, Any]
 ) -> tfd.Distribution:
     """Get an instance of a base distribution.
 
     Parameters
     ----------
-    base_distribution : str
+    base_distribution
         Name of the base distribution.
-    dtype : tf.DType
+    dtype
         Data type of the distribution.
+    kwargs
+        Keyword arguments passed to the Distribution class.
 
     Returns
     -------
@@ -221,8 +225,9 @@ def get_base_distribution(
     return dist
 
 
+# %% classes ###################################################################
 class BernsteinFlow(tfd.TransformedDistribution):
-    """Implements a `tfd.TransformedDistribution` using Bernstein polynomials."""
+    """Implement a `tfd.TransformedDistribution` using Bernstein polynomials."""
 
     def __init__(
         self,
@@ -231,31 +236,33 @@ class BernsteinFlow(tfd.TransformedDistribution):
         b1: Optional[tf.Tensor] = None,
         a2: Optional[tf.Tensor] = None,
         base_distribution: str = "normal",
-        base_distribution_kwargs: dict = {},
+        base_distribution_kwargs: Dict[str, Any] = {},
         clip_to_bernstein_domain: bool = False,
         name: Optional[str] = None,
-        **bernstein_bijector_kwargs,
+        **kwargs: Dict[str, Any],
     ) -> None:
         """Initialize the BernsteinFlow.
 
         Parameters
         ----------
-        thetas : tf.Tensor
+        thetas
             The Bernstein coefficients.
-        a1 : tf.Tensor, optional
+        a1
             The scale of f1., by default None.
-        b1 : tf.Tensor, optional
+        b1
             The shift of f1., by default None.
-        a2 : tf.Tensor, optional
+        a2
             The scale of f3., by default None.
-        base_distribution : str, optional
+        base_distribution
             The base distribution, by default "normal".
-        base_distribution_kwargs : dict, optional
+        base_distribution_kwargs
             Keyword arguments of the base distribution, by default {}.
-        clip_to_bernstein_domain : bool, optional
+        clip_to_bernstein_domain
             Whether to clip to the Bernstein domain [0, 1], by default False.
-        name : str, optional
+        name
             The name of the flow, by default "BernsteinFlow".
+        kwargs
+            Keyword arguments passed to `init_bijectors`.
 
         """
         parameters = dict(locals())
@@ -275,7 +282,9 @@ class BernsteinFlow(tfd.TransformedDistribution):
             if tf.is_tensor(a2):
                 a2 = tensor_util.convert_nonref_to_tensor(a2, dtype=dtype, name="a2")
 
-            base_distribution = get_base_distribution(base_distribution, dtype)
+            base_distribution = get_base_distribution(
+                base_distribution, dtype, **base_distribution_kwargs
+            )
 
             bijector = init_bijectors(
                 thetas,
@@ -283,7 +292,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
                 b1=b1,
                 a2=a2,
                 clip_to_bernstein_domain=clip_to_bernstein_domain,
-                **bernstein_bijector_kwargs,
+                **kwargs,
             )
 
             super().__init__(
@@ -316,34 +325,40 @@ class BernsteinFlow(tfd.TransformedDistribution):
         scale_data: bool,
         shift_data: bool,
         scale_base_distribution: bool,
-        get_thetas_constrain_fn: Callable = get_thetas_constrain_fn,
+        get_thetas_constraint_fn: Callable = get_thetas_constrain_fn,
         base_distribution: str = "normal",
-        base_distribution_kwargs: dict = {},
+        base_distribution_kwargs: Dict[str, Any] = {},
         clip_to_bernstein_domain: bool = False,
         name: Optional[str] = None,
-        bernstein_bijector_kwargs: Dict = {},
-        **kwargs,
+        bernstein_bijector_kwargs: Dict[str, Any] = {},
+        **kwargs: Dict[str, Any],
     ) -> "BernsteinFlow":
         """Create the distribution instance from a `params` vector.
 
         Parameters
         ----------
-        params : tf.Tensor
+        params
             The parameters of the flow.
-        scale_data : bool
+        scale_data
             Whether to scale the data.
-        shift_data : bool
+        shift_data
             Whether to shift the data.
-        scale_base_distribution : bool
+        scale_base_distribution
             Whether to scale the base distribution.
-        base_distribution : str, optional
+        get_thetas_constraint_fn
+            Function returning a constrain function for the Bernstein coefficients.
+        base_distribution
             The base distribution, by default "normal".
-        base_distribution_kwargs : dict, optional
+        base_distribution_kwargs
             Keyword arguments for the base distribution, by default {}.
-        clip_to_bernstein_domain : bool, optional
+        clip_to_bernstein_domain
             Whether to clip to the Bernstein domain [0, 1], by default False.
-        name : str, optional
+        name
             The name of the flow, by default "BernsteinFlow".
+        bernstein_bijector_kwargs
+            Keyword arguments for the Bernstein bijector, by default {}.
+        kwargs
+            Keyword arguments passed to `get_thetas_constraint_fn`.
 
         Returns
         -------
@@ -380,7 +395,7 @@ class BernsteinFlow(tfd.TransformedDistribution):
             return BernsteinFlow(
                 **apply_constraining_bijectors(
                     unconstrained_parameters=slice_parameter_vector(params, p_spec),
-                    thetas_constrain_fn=get_thetas_constrain_fn(**kwargs),
+                    thetas_constraint_fn=get_thetas_constraint_fn(**kwargs),
                 ),
                 base_distribution=base_distribution,
                 base_distribution_kwargs=base_distribution_kwargs,

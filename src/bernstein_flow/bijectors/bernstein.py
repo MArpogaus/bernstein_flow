@@ -1,17 +1,12 @@
-# AUTHOR INFORMATION ##########################################################
-# file    : bernstein_bijector.py
-# brief   : [Description]
+# -*- time-stamp-pattern: "changed[\s]+:[\s]+%%$"; -*-
+# %% Author ####################################################################
+# file    : bernstein.py
+# author  : Marcel Arpogaus <znepry.necbtnhf@tznvy.pbz>
 #
-# author  : Marcel Arpogaus
-# created : 2020-09-11 14:14:24
-# changed : 2020-12-07 16:29:11
-# DESCRIPTION #################################################################
-#
-# This project is following the PEP8 style guide:
-#
-#    https://www.python.org/dev/peps/pep-0008/)
-#
-# COPYRIGHT ###################################################################
+# created : 2024-07-12 14:52:28 (Marcel Arpogaus)
+# changed : 2024-07-12 14:52:28 (Marcel Arpogaus)
+
+# %% License ###################################################################
 # Copyright 2020 Marcel Arpogaus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,8 +21,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 ###############################################################################
+# %% Description ###############################################################
+"""Implement a Bernstein Polynomial as a `tfp.Bijector`."""
 
-# REQUIRED PYTHON MODULES #####################################################
+# %% imports ###################################################################
 from functools import partial
 from typing import Tuple
 
@@ -37,30 +34,46 @@ from tensorflow_probability.python.internal import dtype_util, tensor_util
 
 from bernstein_flow.activations import get_thetas_constrain_fn
 from bernstein_flow.math.bernstein import (
-    gen_bernstein_polynomial_with_linear_extension,
-    gen_bernstein_polynomial_with_linear_extrapolation,
+    generate_bernstein_polynomial_with_linear_extension,
+    generate_bernstein_polynomial_with_linear_extrapolation,
 )
 
 
+# %% classes ###################################################################
 class BernsteinPolynomial(tfp.experimental.bijectors.ScalarFunctionWithInferredInverse):
-    """Implementation of a Bernstein polynomials Bijector."""
+    """Implement a Bernstein polynomials Bijector.
+
+    This bijector transforms an input tensor by applying a Bernstein polynomial.
+
+    Attributes
+    ----------
+        thetas: The Bernstein coefficients.
+        extrapolation: The method to extrapolate outside of bounds.
+        analytic_jacobian: Whether to use the analytic Jacobian.
+        domain: The domain of the Bernstein polynomial.
+        name: The name to give Ops created by the initializer.
+
+    """
 
     def __init__(
         self,
         thetas: tf.Tensor,
         extrapolation: bool = True,
         analytic_jacobian: bool = True,
-        domain: Tuple[int, ...] = None,
+        domain: Tuple[float, float] = (0.0, 1.0),
         name: str = "bernstein_bijector",
-        **kwds,
+        **kwargs,
     ) -> None:
-        """Constructs a new instance of a Bernstein polynomial bijector.
+        """Construct a new instance of a Bernstein polynomial bijector.
 
-        :param thetas: The Bernstein coefficients.
-        :type thetas: tf.Tensor
-        :param extrapolation: Method to extrapolate outside of bounds.
-        :type extrapolation: str
-        :param name: The name to give Ops created by the initializer.
+        Args:
+        ----
+            thetas: The Bernstein coefficients.
+            extrapolation: The method to extrapolate outside of bounds.
+            analytic_jacobian: Whether to use the analytic Jacobian.
+            domain: The domain of the Bernstein polynomial.
+            name: The name to give Ops created by the initializer.
+            kwargs: Keyword arguments for the parent class.
 
         """
         with tf.name_scope(name) as name:
@@ -76,7 +89,7 @@ class BernsteinPolynomial(tfp.experimental.bijectors.ScalarFunctionWithInferredI
                     forward_log_det_jacobian,
                     self.b_poly_inverse_extra,
                     self.order,
-                ) = gen_bernstein_polynomial_with_linear_extrapolation(
+                ) = generate_bernstein_polynomial_with_linear_extrapolation(
                     self.thetas, domain=domain
                 )
             else:
@@ -85,16 +98,12 @@ class BernsteinPolynomial(tfp.experimental.bijectors.ScalarFunctionWithInferredI
                     forward_log_det_jacobian,
                     self.b_poly_inverse_extra,
                     self.order,
-                ) = gen_bernstein_polynomial_with_linear_extension(
+                ) = generate_bernstein_polynomial_with_linear_extension(
                     self.thetas, domain=domain
                 )
 
-            if domain:
-                low = tf.convert_to_tensor(domain[0], dtype=dtype)
-                high = tf.convert_to_tensor(domain[1], dtype=dtype)
-            else:
-                low = tf.convert_to_tensor(0, dtype=dtype)
-                high = tf.convert_to_tensor(1, dtype=dtype)
+            low = tf.convert_to_tensor(domain[0], dtype=dtype)
+            high = tf.convert_to_tensor(domain[1], dtype=dtype)
 
             if analytic_jacobian:
                 self._forward_log_det_jacobian = forward_log_det_jacobian
@@ -125,10 +134,11 @@ class BernsteinPolynomial(tfp.experimental.bijectors.ScalarFunctionWithInferredI
                 max_iterations=50,
                 name=name,
                 dtype=dtype,
-                **kwds,
+                **kwargs,
             )
 
-    def _inverse_no_gradient(self, y):
+    def _inverse_no_gradient(self, y: tf.Tensor) -> tf.Tensor:
+        """Compute the inverse of the bijector."""
         return tf.stop_gradient(
             self.b_poly_inverse_extra(y, inverse_approx_fn=super()._inverse_no_gradient)
         )
@@ -141,5 +151,6 @@ class BernsteinPolynomial(tfp.experimental.bijectors.ScalarFunctionWithInferredI
             ),
         )
 
-    def _is_increasing(self, **kwargs):
+    def _is_increasing(self, **kwargs) -> bool:
+        """Check if the bijector is increasing."""
         return tf.reduce_all(self.thetas[..., 1:] >= self.thetas[..., :-1])

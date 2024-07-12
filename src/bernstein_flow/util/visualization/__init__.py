@@ -1,18 +1,13 @@
-# AUTHOR INFORMATION ##########################################################
-# file    : visualization.py
-# brief   : [Description]
+# -*- time-stamp-pattern: "changed[\s]+:[\s]+%%$"; -*-
+# %% Author ####################################################################
+# file    : __init__.py
+# author  : Marcel Arpogaus <znepry.necbtnhf@tznvy.pbz>
 #
-# author  : Marcel Arpogaus
-# created : 2020-04-13 16:04:37
-# changed : 2020-10-26 10:55:48
-# DESCRIPTION #################################################################
-#
-# This project is following the PEP8 style guide:
-#
-#    https://www.python.org/dev/peps/pep-0008/)
-#
-# LICENSE #####################################################################
-# Copyright 2020 Marcel Arpogaus
+# created : 2024-07-12 14:48:27 (Marcel Arpogaus)
+# changed : 2024-07-12 14:48:27 (Marcel Arpogaus)
+
+# %% License ###################################################################
+# Copyright 2024 Marcel Arpogaus
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,8 +20,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-###############################################################################
-# REQUIRED PYTHON MODULES #####################################################
+
+# %% description ###############################################################
+"""Defines functions to create som insigtfull plots."""
+
+# %% imports ###################################################################
 
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
@@ -38,8 +36,27 @@ from matplotlib.patches import ConnectionPatch
 from .plot_flow import plot_flow  # noqa F401
 
 
-# function definitions ########################################################
-def vizualize_flow_from_z_domain(flow, z_min=-3, z_max=3):
+# %% functions #################################################################
+def visualize_flow_from_z_domain(
+    flow: tfp.bijectors.Bijector, z_min: float = -3, z_max: float = 3
+) -> plt.Figure:
+    """Visualize a flow from the z-domain to the y-domain.
+
+    Parameters
+    ----------
+    flow : tfp.bijectors.Bijector
+        The flow to visualize.
+    z_min : float, optional
+        The minimum value of z, by default -3
+    z_max : float, optional
+        The maximum value of z, by default 3
+
+    Returns
+    -------
+    plt.Figure
+        The figure with the plots.
+
+    """
     bijector = flow.bijector
     base_dist = flow.distribution
 
@@ -53,7 +70,7 @@ def vizualize_flow_from_z_domain(flow, z_min=-3, z_max=3):
     y_samples = np.squeeze(bijector.forward(z_samples))
 
     # p_y(y) = p_z(h^-1(y))*|h^-1'(y)| = p_z(z)*|h^-1'(y)|
-    ildj = bijector.inverse_log_det_jacobian(y_samples, 0)
+    ildj = bijector.inverse_log_det_jacobian(y_samples, event_ndims=0)
     log_prob = base_dist.log_prob(z_samples)
     log_prob = log_prob + ildj
 
@@ -92,7 +109,8 @@ def vizualize_flow_from_z_domain(flow, z_min=-3, z_max=3):
 
     p_mu_z = base_dist.prob(mu_z)
     p_mu_y = np.exp(
-        base_dist.log_prob(mu_z) + bijector.inverse_log_det_jacobian(mu_y, 0)
+        base_dist.log_prob(mu_z)
+        + bijector.inverse_log_det_jacobian(mu_y, event_ndims=0)
     )
 
     cp_kwds = dict(color="darkgray", lw=1, ls="--", arrowstyle="->")
@@ -122,7 +140,20 @@ def vizualize_flow_from_z_domain(flow, z_min=-3, z_max=3):
     return fig
 
 
-def plot_chained_bijectors(flow):
+def plot_chained_bijectors(flow: tfp.bijectors.Bijector) -> plt.Figure:
+    """Plot the chain of bijectors in a flow.
+
+    Parameters
+    ----------
+    flow : tfp.bijectors.Bijector
+        The flow to plot.
+
+    Returns
+    -------
+    plt.Figure
+        The figure of the plot.
+
+    """
     chained_bijectors = flow.bijector.bijector.bijectors
     base_dist = flow.distribution
     cols = len(chained_bijectors) + 1
@@ -141,7 +172,7 @@ def plot_chained_bijectors(flow):
     for i, (a, b) in enumerate(zip(ax[1:], chained_bijectors)):
         # we need to use the inverse here since we are going from z->y!
         z = b.inverse(zz)
-        ildj += b.forward_log_det_jacobian(z, 1)
+        ildj += b.forward_log_det_jacobian(z, event_ndims=1)
         # print(z.shape, zz.shape, ildj.shape)
         a.scatter(z, np.exp(log_probs + ildj))
         a.set_title(b.name.replace("_", " "))
@@ -151,7 +182,34 @@ def plot_chained_bijectors(flow):
     return fig
 
 
-def plot_x_trafo(flow, xmin=-1, xmax=1, n=20, size=3):
+def plot_x_trafo(
+    flow: tfp.bijectors.Bijector,
+    xmin: float = -1,
+    xmax: float = 1,
+    n: int = 20,
+    size: int = 3,
+) -> plt.Figure:
+    """Plot the transformation of x for each bijector in a flow.
+
+    Parameters
+    ----------
+    flow : tfp.bijectors.Bijector
+        The flow to plot.
+    xmin : float, optional
+        The minimum value of x, by default -1
+    xmax : float, optional
+        The maximum value of x, by default 1
+    n : int, optional
+        The number of points to plot, by default 20
+    size : int, optional
+        The size of the plot, by default 3
+
+    Returns
+    -------
+    plt.Figure
+        The figure of the plot.
+
+    """
     x = np.linspace(xmin, xmax, n, dtype=np.float32)
     pos = n // 2
     con_kwds = dict(
@@ -229,7 +287,22 @@ def plot_x_trafo(flow, xmin=-1, xmax=1, n=20, size=3):
     return fig
 
 
-def plot_value_and_gradient(func, y):
+def plot_value_and_gradient(func: callable, y: np.ndarray) -> plt.Figure:
+    """Plot the value and gradient of a function.
+
+    Parameters
+    ----------
+    func : callable
+        The function to plot.
+    y : np.ndarray
+        The values to evaluate the function at.
+
+    Returns
+    -------
+    plt.Figure
+        The figure of the plot.
+
+    """
     [funval, grads] = tfp.math.value_and_gradient(func, y)
 
     fig, ax = plt.subplots(1, 2, figsize=(16, 8), constrained_layout=True)
