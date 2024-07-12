@@ -30,6 +30,9 @@ develop = [
   'python-lsp-server[all]',
   'ruff'
 ]
+docs = [
+  'pdoc'
+]
 examples = [
   'bernstein_flow[train]',
   'jupyterlab>=3.0.0,<4.0.0a0',
@@ -70,6 +73,9 @@ ignore = []
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
 select = ["I", "E", "F", "D"]
 unfixable = []
+
+[tool.ruff.lint.per-file-ignores]
+"{cml,test}/**" = ["D"]
 
 [tool.setuptools_scm]
 # https://stackoverflow.com/a/74404703

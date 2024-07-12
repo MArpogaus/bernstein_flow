@@ -28,8 +28,10 @@ J = np.log(np.abs(np.gradient(y, np.diff(x).mean())))
 ildj = bpoly.inverse_log_det_jacobian(y, 0).numpy()
 iJ = np.log(abs(np.gradient(x)))
 
-f"{x.shape=}, {xx.shape=}, {y.shape=}, {y_grad.shape=} {fldj.shape=}, {J.shape=}, {ildj.shape=}, {iJ.shape=}"
-
+(
+    f"{x.shape=}, {xx.shape=}, {y.shape=}, {y_grad.shape=}"
+    f"{fldj.shape=}, {J.shape=}, {ildj.shape=}, {iJ.shape=}"
+)
 # %% Plot
 fig, axs = plt.subplots(2, sharex=True)
 fig.suptitle("Bernstein polynomial and inverse with extrapolation")
@@ -90,8 +92,10 @@ J = np.log(np.abs(np.gradient(y, np.diff(x).mean())))
 ildj = bpoly.inverse_log_det_jacobian(y, 0).numpy()
 iJ = np.log(abs(np.gradient(x)))
 
-f"{x.shape=}, {xx.shape=}, {y.shape=}, {y_grad.shape=} {fldj.shape=}, {J.shape=}, {ildj.shape=}, {iJ.shape=}"
-
+(
+    f"{x.shape=}, {xx.shape=}, {y.shape=}, {y_grad.shape=}, "
+    f" {fldj.shape=}, {J.shape=}, {ildj.shape=}, {iJ.shape=}"
+)
 
 # %% Plot
 fig, axs = plt.subplots(2, sharex=True)
