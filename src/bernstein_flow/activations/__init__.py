@@ -4,7 +4,7 @@
 # author  : Marcel Arpogaus <znepry.necbtnhf@tznvy.pbz>
 #
 # created : 2024-07-12 15:12:18 (Marcel Arpogaus)
-# changed : 2024-07-12 15:39:47 (Marcel Arpogaus)
+# changed : 2024-07-18 13:00:56 (Marcel Arpogaus)
 
 # %% License ###################################################################
 # Copyright 2024 Marcel Arpogaus
@@ -37,7 +37,7 @@ from tensorflow_probability.python.internal import (
 
 # %% functions #################################################################
 def get_thetas_constrain_fn(
-    bounds: Tuple[Union[float, None], Union[float, None]] = (None, None),
+    bounds: Tuple[Union[float, None], Union[float, None]] = (-4, 4),
     smooth_bounds: bool = True,
     allow_flexible_bounds: bool = False,
     fn=tf.math.softplus,
