@@ -4,7 +4,7 @@
 # author  : Marcel Arpogaus <znepry.necbtnhf@tznvy.pbz>
 #
 # created : 2024-07-12 14:49:21 (Marcel Arpogaus)
-# changed : 2024-07-12 14:49:21 (Marcel Arpogaus)
+# changed : 2024-07-18 12:02:58 (Marcel Arpogaus)
 
 # %% License ###################################################################
 # Copyright 2024 Marcel Arpogaus
@@ -50,9 +50,9 @@ def _get_annot_map(bijector_names: List[str], bijector_name: str) -> Dict[str, s
 
     Parameters
     ----------
-    bijector_names : List[str]
+    bijector_names
         List of bijector names.
-    bijector_name : str
+    bijector_name
         Name of the bijector to split the data at.
 
     Returns
@@ -84,7 +84,7 @@ def _get_formulas(bijectors: List[tfb.Bijector]) -> str:
 
     Parameters
     ----------
-    bijectors : List[tfb.Bijector]
+    bijectors
         List of bijectors.
 
     Returns
@@ -110,7 +110,7 @@ def _get_bijectors_recursive(bijector: tfb.Bijector) -> List[tfb.Bijector]:
 
     Parameters
     ----------
-    bijector : tfb.Bijector
+    bijector
         The bijector to extract from.
 
     Returns
@@ -134,7 +134,7 @@ def _get_bijectors(
 
     Parameters
     ----------
-    flow : tfp.distributions.TransformedDistribution
+    flow
         Transformed distribution.
 
     Returns
@@ -151,7 +151,7 @@ def _get_bijector_names(bijectors: List[tfb.Bijector]) -> List[str]:
 
     Parameters
     ----------
-    bijectors : List[tfb.Bijector]
+    bijectors
         List of bijectors.
 
     Returns
@@ -170,9 +170,9 @@ def _split_bijector_names(
 
     Parameters
     ----------
-    bijector_names : List[str]
+    bijector_names
         List of bijector names.
-    split_bijector_name : str
+    split_bijector_name
         Name of the bijector to split the list at.
 
     Returns
@@ -197,17 +197,17 @@ def _get_plot_data(
 
     Parameters
     ----------
-    flow : tfp.distributions.TransformedDistribution
+    flow
         Transformed distribution.
-    bijector_name : str
+    bijector_name
         Name of the bijector to split the data at.
-    n : int
+    n
         Number of samples
-    z_values : np.ndarray
+    z_values
         Predefined sample values
-    seed : int
+    seed
         Random seed
-    ignore_bijectors : Tuple[str]
+    ignore_bijectors
         Tuple containing names of bijectors to ignore during plotting
 
     Returns
@@ -263,9 +263,9 @@ def _configure_axes(a: Axes, style: str):
 
     Parameters
     ----------
-    a : Axes
+    a
         Axes object to configure.
-    style : str
+    style
         Style of the axes. Can be "right", "top", or "none".
 
     """
@@ -300,17 +300,17 @@ def _prepare_figure(
 
     Parameters
     ----------
-    plot_data : Dict[str, Dict[str, np.ndarray]]
+    plot_data
         Plot data.
-    pre_bpoly_trafos : List[str]
+    pre_bpoly_trafos
         Pre-split bijector names.
-    post_bpoly_trafos : List[str]
+    post_bpoly_trafos
         Post-split bijector names.
-    size : int, optional
+    size
         Figure size
-    wspace : float
+    wspace
         Width space between subplots
-    hspace : float
+    hspace
         Height space between subplots
 
     Returns
@@ -377,13 +377,13 @@ def _plot_data_to_axes(
 
     Parameters
     ----------
-    axs : Dict[str, Axes]
+    axs
         Dictionary mapping bijector names to axes.
-    plot_data : Dict[str, Dict[str, np.ndarray]]
+    plot_data
         Plot data.
-    pre_bpoly_trafos : List[str]
+    pre_bpoly_trafos
         Pre-split bijector names.
-    post_bpoly_trafos : List[str]
+    post_bpoly_trafos
         Post-split bijector names.
 
     """
@@ -436,30 +436,30 @@ def _add_annot_to_axes(
 
     Parameters
     ----------
-    axs : Dict[str, Axes]
+    axs
         Dictionary mapping bijector names to axes.
-    plot_data : Dict[str, Dict[str, np.ndarray]]
+    plot_data
         Plot data.
-    pre_bpoly_trafos : List[str]
+    pre_bpoly_trafos
         Pre-split bijector names.
-    post_bpoly_trafos : List[str]
+    post_bpoly_trafos
         Post-split bijector names.
-    bijector_name : str
+    bijector_name
         Name of the bijector to split the data at.
-    annot_map : Dict[str, str], optional
+    annot_map
         Dictionary mapping bijector names to annotations, by default {}
-    extra_annot_prob : Dict[str, Tuple[Tuple[float, float], str, int]], optional
+    extra_annot_prob
         Dictionary containing extra annotations for probabilities, by default {}
-    extra_annot_sample : Dict[str, Tuple[Tuple[float, float], str, int]], optional
+    extra_annot_sample
         Dictionary containing extra annotations for samples, by default {}
-    formulas : str, optional
+    formulas
         LaTeX formulas string, by default ""
-    pos : float, optional
+    pos
         Position of the arrows, by default 0.5
-    cp_kwds : Dict, optional
+    cp_kwds
         Keyword arguments for the ConnectionPatch,
         by default dict(arrowstyle="-|>", shrinkA=10, shrinkB=10, color="gray")
-    usetex : bool, optional
+    usetex
         Whether to use LaTeX for text rendering, by default True
 
     """
@@ -590,27 +590,27 @@ def plot_flow(
 
     Parameters
     ----------
-    flow : tfp.distributions.TransformedDistribution
+    flow
         Transformed distribution to plot.
-    bijector_name : str, optional
+    bijector_name
         Name of the bijector to split the data at, by default "bernstein_bijector"
-    n : int, optional
+    n
         Number of samples, by default 500
-    z_values : np.ndarray, optional
+    z_values
         Predefined sample values, by default None
-    seed : int, optional
+    seed
         Random seed, by default 1
-    size : float, optional
+    size
         Figure size scaling factor, by default 1.5
-    wspace : float, optional
+    wspace
         Width space between subplots, by default 0.5
-    hspace : float, optional
+    hspace
         Height space between subplots, by default 0.5
-    usetex : bool, optional
+    usetex
         Whether to use LaTeX for text rendering, by default True
-    ignore_bijectors : Tuple[str], optional
+    ignore_bijectors
         Tuple containing names of bijectors to ignore during plotting, by default ()
-    **kwds : optional
+    **kwds
         Additional keyword arguments passed to add_annot_to_axes.
 
     Returns

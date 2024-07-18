@@ -4,7 +4,7 @@
 # author  : Marcel Arpogaus <znepry.necbtnhf@tznvy.pbz>
 #
 # created : 2024-07-12 14:52:28 (Marcel Arpogaus)
-# changed : 2024-07-12 14:52:28 (Marcel Arpogaus)
+# changed : 2024-07-18 12:01:50 (Marcel Arpogaus)
 
 # %% License ###################################################################
 # Copyright 2020 Marcel Arpogaus
@@ -47,11 +47,8 @@ class BernsteinPolynomial(tfp.experimental.bijectors.ScalarFunctionWithInferredI
 
     Attributes
     ----------
-        thetas: The Bernstein coefficients.
-        extrapolation: The method to extrapolate outside of bounds.
-        analytic_jacobian: Whether to use the analytic Jacobian.
-        domain: The domain of the Bernstein polynomial.
-        name: The name to give Ops created by the initializer.
+    thetas
+        The Bernstein coefficients.
 
     """
 
@@ -66,14 +63,20 @@ class BernsteinPolynomial(tfp.experimental.bijectors.ScalarFunctionWithInferredI
     ) -> None:
         """Construct a new instance of a Bernstein polynomial bijector.
 
-        Args:
-        ----
-            thetas: The Bernstein coefficients.
-            extrapolation: The method to extrapolate outside of bounds.
-            analytic_jacobian: Whether to use the analytic Jacobian.
-            domain: The domain of the Bernstein polynomial.
-            name: The name to give Ops created by the initializer.
-            kwargs: Keyword arguments for the parent class.
+        Parameters
+        ----------
+        thetas
+            The Bernstein coefficients.
+        extrapolation
+            The method to extrapolate outside of bounds.
+        analytic_jacobian
+            Whether to use the analytic Jacobian.
+        domain
+            The domain of the Bernstein polynomial.
+        name
+            The name to give Ops created by the initializer.
+        kwargs
+            Keyword arguments for the parent class.
 
         """
         with tf.name_scope(name) as name:
